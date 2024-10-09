@@ -265,7 +265,10 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
         pw_code_write = pw_code
     
     logger.debug(f'pw_code = {pw_code}, pw_code_write = {pw_code_write}, pw_code writeable = {os.access(pw_code, os.W_OK)}')
-    
+    if fn_gtf:
+        fn_gtf = os.path.abspath(fn_gtf)
+    if fn_fa:
+        fn_fa = os.path.abspath(fn_fa)
 
     # create the folders if not exists
     for i in ['ref', 'fa', 'annotation']:
@@ -364,11 +367,13 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
             continue
         if not os.path.exists(value):
             if os.path.exists(f'{value}.gz'):
+                logger.debug(f'use gzip version: {value}.gz')
                 ref_files[key] = f'{value}.gz'
                 continue
             # if exist in pw_code_write
             fn_new = value.replace(f'{pw_code}/', f'{pw_code_write}/')
             if pw_code != pw_code_write and os.path.exists(fn_new):
+                logger.debug(f'exist in {pw_code_write}, but not in default ref folder {pw_code}: {fn_new}')
                 ref_files[key] = fn_new
                 continue
             tmp = value.split('/')
@@ -381,7 +386,6 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
                 logger.warning(f"{organism} - {key}: '{value}'  not exist\n")
                 need_download[key] = value
     need_download = {k: v.replace(f'{pw_code}/', f'{pw_code_write}/') for k, v in need_download.items()}
-    logger.debug(need_download)
     if need_download:
         logger.warning(f'{len(need_download)} reference files need to be downloaded for {organism}...')
         logger.debug(need_download)
@@ -390,6 +394,9 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
         for ipw in folders:
             os.makedirs(ipw, exist_ok=True)
         ref_files = download_ref_files(organism, need_download, ref_files)
+    else:
+        logger.debug(f'All reference files exist for {organism}')
+
     tmp = json.dumps(ref_files, indent=3)
     logger.debug(tmp)
     return ref_files
