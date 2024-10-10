@@ -256,7 +256,7 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
     ref_files = {}
     pw_code = os.path.dirname(os.path.realpath(__file__))
     # check if the folder is writable
-    if not os.access(pw_code, os.W_OK):
+    if not os.access(pw_code, os.W_OK) or pw_code.startswith('/app/nrsa'):
         logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to $HOME/.nrsa')
         home = os.path.expanduser("~")
         pw_code_write = f'{home}/.nrsa'
