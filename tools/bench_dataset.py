@@ -9,7 +9,7 @@ import traceback # use trackback.format_exc() to capture info
 home = os.path.expanduser("~")
 
 
-hostname = os.uname()[1]
+hostname = os.uname()[1].split('.')[0]
 
 import sys
 def getlogger(fn_log=None, logger_name=None, nocolor=False):
@@ -131,13 +131,14 @@ def prepare_config(pwd):
 
     force_rerun_get_size = False
     for lb, fn in flist:
-        if not os.path.exists(fn):
-            file_not_exist.append(fn)
-            continue
-
         fn_bed = f'{pw_bed}/{os.path.basename(fn).replace(".bam", ".bed")}'
         fn_bed = re.sub(r'[_.-]?sort(?:ed)?', '', fn_bed)
         fn_bed = re.sub(r'[_.\-](rRNArm|F4q10)', '', fn_bed)
+
+        if not os.path.exists(fn) and not os.path.exists(fn_bed):
+            file_not_exist.append(fn)
+            continue
+
 
         if not os.path.exists(fn_bed):
             logger.warning(f'converting bam to bed: {lb} - {os.path.basename(fn)}')
@@ -216,51 +217,70 @@ def prepare_config(pwd):
     # logger.info(f'config = {tmp}')
     return config
 
-def create_sh(pwd, config, n_rep):
+def create_sh(pwd, pw_python, pw_nrsa_code, config, n_rep):
     """
     create the script for run both step1 and step2, each one repeat n_rep times
     """
-    sh_list = []
+    record = {'step1': {}, 'step2': {}}  # k1 = step1, step2, k2 = lb, v = [], each element is like [fn_sh, fn_log]
     organism = 'hg19'
-    log_list = {'step1': [], 'step2': []}
-    pw_python = '/data/cqs/chenh19/project/nrsa_v2/miniconda3/bin/python3.12'
-    pw_nrsa_code = '/data/cqs/chenh19/project/nrsa_v2/code'
     for c in config:
         lb = c['lb']
+        lb_in_fn = re.sub(r'\s+', '_', lb)
         for step in ['step1', 'step2']:
             tmp = {'step1': 'pause_PROseq.py', 'step2': 'eRNA.py'}
             fn_nrsa_script = f'{pw_nrsa_code}/{tmp[step]}'
             for i_rep in range(n_rep):
                 i_rep += 1
-                sh = f'{pwd}/sh/{lb}_{step}_{i_rep}.sh'
-                log = f'{pwd}/sh/{lb}_{step}_{i_rep}.log'
-                log_list[step].append(log)
-                sh_list.append(sh)
+                sh = f'{pwd}/sh/{lb_in_fn}_{step}_{i_rep}.sh'
+                log = f'{pwd}/sh/{lb_in_fn}_{step}_{i_rep}.log'
+                record[step].setdefault(lb, []).append([sh, log])
 
                 with open(sh, 'w') as f:
                     f.write(f'#!/bin/bash\n')
                     f.write(f'cd {pwd}\n')
                     f.write(f'echo "start {step} {lb} {i_rep}"\n')
-                    f.write(f'/usr/bin/time -v {pw_python}  {fn_nrsa_script} -org {organism}')
+                    f.write(f'/usr/bin/time -v {pw_python}  {fn_nrsa_script} -org {organism} ')
                     if c['in1']:
-                        f.write(f'-in1 {" ".join(c["in1"])} ')
+                        f.write(f' -in1 {" ".join(c["in1"])} ')
                     if c['in2']:
-                        f.write(f'-in2 {" ".join(c["in2"])} ')
+                        f.write(f' -in2 {" ".join(c["in2"])} ')
                     if c['gtf']:
-                        f.write(f'-gtf {c["gtf"]} ')
-                    f.write(f'-pwout {pwd}/out/{lb}_{step}_{i_rep} ')
+                        f.write(f' -gtf {c["gtf"]} ')
+                    f.write(f'-pwout {pwd}/out/{lb_in_fn}_{step}_{i_rep} ')
                     f.write(f'> {log} 2>&1\n')
                     f.write(f'echo "end {step} {lb} {i_rep}"\n')
+    # dump the record to json
+    with open(f'{pwd}/bench_settings.json', 'w') as f:
+        json.dump(record, f, indent=4)
     
+    # build the sh list for run them sequentially, step1 scripts first, then step2, after each script, wait 30s
+    sh_list = []
+    for step in ['step1', 'step2']:
+        for lb, v in record[step].items():
+            for fn_sh, fn_log in v:
+                sh_list.append(fn_sh)
+                os.chmod(fn_sh, 0o755)
+                sh_list.append(f'echo "waiting 30s"\nsleep 30\n')
+    sh_list.append('echo "all done"')
+    with open(f'{pwd}/run_all.sh', 'w') as f:
+        f.write('\n'.join(sh_list))
     
     
 if __name__ == "__main__":
-    if 'cqs3' not in hostname:
-        print('This script should be run in cqs3')
+    if hostname not in ['cqs3', 'bioinfo2']:
+        print('This script should be run in cqs3 or bioinfo2')
         sys.exit(1)
     n_rep = 3 # number of repeats for each dataset, to get the average time and memory usage
-    pwd = '/nobackup/h_vangard_1/chenh19/nrsa/bench'
+    if hostname == 'cqs3':
+        pwd = '/nobackup/h_vangard_1/chenh19/nrsa/bench'
+        pw_python = '/data/cqs/chenh19/project/nrsa_v2/miniconda3/bin/python3.12'
+        pw_nrsa_code = '/data/cqs/chenh19/project/nrsa_v2/code'
+    else:
+        pwd = '/data/nrsa/bench'
+        pw_python = ''
     os.chdir(pwd)
+    logger.info('prepare config')
     config = prepare_config(pwd)
-    create_sh(pwd, config, n_rep)
+    logger.info('create sh')
+    create_sh(pwd, pw_python, pw_nrsa_code, config, n_rep)
     

@@ -2110,7 +2110,7 @@ def get_lb(fn):
 
 
 
-def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size, reuse=True):
+def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
     """
     process the bed file, and get the count of the read end regarding strand.
     will export 2 files, 
@@ -2126,7 +2126,7 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size, reuse=True):
     fn_chr_map = f'{pw_bed}/{fn_lb}.chr_map.pkl'
     fn_n_lines = f'{pw_bed}/{fn_lb}.line_count.txt'
     
-    if reuse and os.path.exists(fn_count_per_base) and os.path.getsize(fn_count_per_base) > 10:
+    if reuse and os.path.exists(fn_count_per_base) and os.path.getsize(fn_count_per_base) > 10 and os.path.exists(fn_count_bin) and os.path.getsize(fn_count_bin) > 10:
         logger.info(f'Loading pre-counting data...')
         with open(fn_count_per_base, 'rb') as f:
             count_per_base = pickle.load(f)
@@ -2158,7 +2158,6 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size, reuse=True):
                         fatal = 1
                         break
                 continue
-            
             # because we are examining where the transcript stops/pauses
             # so we only care about the read end, no matter if we will use it in TSS or TTS or gene body calculation
             strand_idx, read_end = (0, int(e)) if strand == '+' else (1, int(s) + 1)
@@ -2209,6 +2208,8 @@ def process_input(pwout_raw, fls):
     err = 0
     res = []
     lb_map = {}
+    if not os.path.exists(f'{pwout_raw}/bed'):
+        os.makedirs(f'{pwout_raw}/bed', exist_ok=True)
     for fn in fls:
         fn_lb = get_lb(fn)
         gz_suffix = '.gz' if fn.endswith('.gz') else ''
