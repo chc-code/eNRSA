@@ -22,6 +22,7 @@ import statsmodels.stats.contingency_tables as contingency_tables
 from scipy.stats import chi2
 import warnings
 import urllib.request
+sys.dont_write_bytecode = True
 
 pw_code = os.path.dirname(os.path.realpath(__file__))
 inf_neg = float('-inf')
@@ -236,12 +237,14 @@ def check_is_sorted(fn_bed):
     chr_prev = None
     chr_set = set()
     logger.info(f'Checking if bed file is sorted: {fn_bed}')
+    chr_order = []
     with gzip.open(fn_bed, 'rt') if fn_bed.endswith('.gz') else open(fn_bed) as f:
         last = 0
         for i in f:
             chr_, start = i.split('\t', 2)[:2]
             start = int(start)
             if chr_ != chr_prev:
+                chr_order.append(chr_)
                 if chr_ in chr_set:
                     # the chr_ has been seen before
                     return False
@@ -250,7 +253,11 @@ def check_is_sorted(fn_bed):
             elif start < last:
                 return False
             last = start
-    return True
+    # check if the chr is ordered
+    tmp = sorted(chr_order)
+    if tmp == chr_order:
+        return True
+    return False
 def get_ref(organism, fn_gtf=None, fn_fa=None):
     # get the path of the reference files
     ref_files = {}
@@ -476,10 +483,10 @@ def bench(s, lb, d):
     return now
 
 
-def get_peak_method1(count_per_base, chr_, strand, s, e):
+def get_peak_method1(count_per_base, chr_, strand_idx, s, e):
     # sum from the per-base pre-count dict
     ct_sum = 0
-    strand_idx = 0 if strand == '+' else 1
+    # strand_idx = 0 if strand == '+' else 1
     res_chr = count_per_base[chr_]
     return sum([res_chr.get(i, [0, 0])[strand_idx] for i in range(s, e + 1)])
 
@@ -2105,8 +2112,8 @@ def run_shell(cmd, echo=False, ret_info=False):
     return retcode, stdout, stderr
 
 def get_lb(fn):
-    lb = fn.rsplit('/', 1)[-1].rsplit('.', 1)[0]
-    return re.sub(r'\.sort(ed)?\b', '', lb)
+    lb = os.path.basename(fn).replace('.gz', '').rsplit('.', 1)[0]
+    return re.sub(r'[\._\-]*sort(ed)?\b', '', lb)
 
 
 
@@ -2127,7 +2134,7 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
     fn_n_lines = f'{pw_bed}/{fn_lb}.line_count.txt'
     
     if reuse and os.path.exists(fn_count_per_base) and os.path.getsize(fn_count_per_base) > 10 and os.path.exists(fn_count_bin) and os.path.getsize(fn_count_bin) > 10:
-        logger.info(f'Loading pre-counting data...')
+        logger.info(f'Loading pre-counting data - {fn_lb}...')
         with open(fn_count_per_base, 'rb') as f:
             count_per_base = pickle.load(f)
         with open(fn_count_bin, 'rb') as f:
@@ -2197,7 +2204,7 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
     return count_per_base, count_bin
 
 
-def process_input(pwout_raw, fls):
+def process_input(pwout_raw, fls, respect_sorted=False):
     """
     process input files, convert bam to bed if needed, and build the index for bed files
     return a list of [fn_bed, idx_bed, fn_lb]
@@ -2236,18 +2243,19 @@ def process_input(pwout_raw, fls):
             ires = [fn_lb, fn_out_bed]
         elif fn_for_check.endswith('.bed'):
             # check if sorted
-            # if 'sorted' in fn:
-            #     is_sorted = 1
-            # else:
-            #     is_sorted = check_is_sorted(fn)
+            if respect_sorted is False:
+                is_sorted = 0
+            elif 'sorted' in fn:
+                is_sorted = 1
+            else:
+                is_sorted = check_is_sorted(fn)
                 
-            # if is_sorted:
-            #     fn_abs = os.path.realpath(fn)
-            #     fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
-            #     retcode = run_shell(f'ln -sf {fn_abs} {fn_dest}')
-            #     logger.debug(f'create symlink of {fn_abs}')
-            #     ires = [fn_lb, fn_dest]
-            # else:
+            if is_sorted:
+                fn_abs = os.path.realpath(fn)
+                fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
+                os.symlink(fn_abs, fn_dest)
+                ires = [fn_lb, fn_dest]
+            else:
                 logger.info(f'Sorting input file: {fn}')
                 # bedtools can handle gzip format
                 cmd = f'bedtools sort -i {fn} > {fn_out_bed}'
@@ -2928,6 +2936,7 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
         logger.info(f'processing {fn_lb}')
 
         count_per_base, count_bin = pre_count_for_bed(fn_lb, fn_bed, pw_bed, bin_size, reuse=reuse_pre_count)
+        bin_size = count_bin['bin_size']
         prev_peak = {}
         # exclude the ts that the chr not in the bed files
         valid_chr = set(count_per_base)
@@ -3356,6 +3365,7 @@ def pause_longeRNA_main(args):
             header_gb += [f'gbc_{fn_lb}', f'gbd_{fn_lb}']
             header_pp.append(f'ppc_{fn_lb}')
         header += header_pp + header_gb
+
         
         with open(fn_count_pp_gb, 'w') as o:
             print('\t'.join(header), file=o)
@@ -3365,7 +3375,9 @@ def pause_longeRNA_main(args):
                 row += pp_str[transcript_id] + gb_str[transcript_id]
                 print('\t'.join(row), file=o)
 
-        
+    # modify here
+    # logger.warning(f'modify here, skip the following steps')
+    # sys.exit(1)
     # calculate FDR
     close_fh()
     logger.info('Calculating FDR')
