@@ -3877,9 +3877,11 @@ def prioritize_enhancer(pwout, fn_peak, rep1, rep2, direction, weight, fdr_thres
         df.to_csv(fn_enhancer_prior, sep='\t', na_rep='NA', index=False)
 
     
-    # rep=0 => _sort2(fn_enhancer_piro)
-    
-    
-    
-    
+def show_system_info():
+    hostname = str(os.uname())
+    user = os.getlogin()
+    # get the group name
+    group = os.popen('groups').read().strip()
+    # get other basic info
+    logger.debug(f'hostname = {hostname}, user = {user}, group = {group}')
     
