@@ -794,8 +794,6 @@ def get_line_count(fn):
     return n
 
 def calculate_signal(fn_lb, fn_bed, fn_split_bin_bed, fn_coverage, demo=False):
-    # logger.warning(f'modify here')
-    # if not :
     if demo and os.path.exists(fn_coverage):
         logger.debug(f'skipped bedtools coverage for enhancer center, {fn_lb}')
     else:
@@ -2054,10 +2052,6 @@ def process_gtf(fn_gtf, pwout):
     if err_total:
         logger.info(f'error in parsing gtf file: {err}')
     
-    # logger.warning('modify here')
-    # logger.warning(res['NM_000015.2'])
-    # sys.exit(1)
-
     return res, fn_tss, fn_tss_tts, err
 
 
@@ -2493,15 +2487,7 @@ def get_enhancer(other_region, fn_fantom, fn_association, fn_tss_tts, lcut=400, 
                 tmp[k1][k2] = ','.join(sorted(v2))
         enh_sites = tmp
     
-    # dump to pickle
-    # logger.warning(f'modify here, dump fantom_sites pkl')
-    # fantom_sites_tmp = {k: sorted(v) for k, v in fantom_sites.items()}
-    # with open(f'fantom_sites.pkl', 'wb') as o:
-    #     pickle.dump(fantom_sites_tmp, o)
-    
-    # with open(f'enh_sites.pkl', 'wb') as o:
-    #     pickle.dump(enh_sites, o)
-    
+
     # find center of enhancers
     enhancer_region = {}
     lerna_out = set()
@@ -2610,21 +2596,6 @@ def get_enhancer(other_region, fn_fantom, fn_association, fn_tss_tts, lcut=400, 
             tss_tts_info = process_tss_tts(fn_tss_tts)
             enh_out_str = [line_str for line_str in enh_out_str if filter_by_tss_tts(line_str.split('\t', 3), tss_tts_info)]
             lerna_out = [line for line in lerna_out if filter_by_tss_tts(line, tss_tts_info)]
-            
-            # enh_new = []
-            # lerna_new = []
-            # for line in enh_out_str:
-            #     try:
-            #         keep = filter_by_tss_tts(line, tss_tts_info)
-            #     except:
-            #         logger.error(f'invalid input for filter: enh_out, line = \n{line}')
-            #         sys.exit(1)
-            # for line in lerna_out:
-            #     try:
-            #         keep = filter_by_tss_tts(line, tss_tts_info)
-            #     except:
-            #         logger.error(f'invalid input for filter: lerna, line = \n{line}')
-            #         sys.exit(1)
 
     n_enhancer_raw = sum([len(v) for v in enhancer_region.values()])
     n_enhancer_after_merge = len(enh_out)
@@ -3350,7 +3321,7 @@ def pause_longeRNA_main(args):
         logger.warning(f'demo mode, skip getting pp_gb count, reuse prev res')
         close_fh()
     else:
-        reuse_pre_count = True # modify here
+        reuse_pre_count = True
         logger.info(f'Getting pp_gb count')
         pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False)
         close_fh()
@@ -3375,9 +3346,7 @@ def pause_longeRNA_main(args):
                 row += pp_str[transcript_id] + gb_str[transcript_id]
                 print('\t'.join(row), file=o)
 
-    # modify here
-    # logger.warning(f'modify here, skip the following steps')
-    # sys.exit(1)
+
     # calculate FDR
     close_fh()
     logger.info('Calculating FDR')
@@ -3399,9 +3368,7 @@ def pause_longeRNA_main(args):
 
     fno_prefix = 'longeRNA-' if analysis.longerna else ''
 
-    # modify here
     logger.info('Change_pp_gb')
-    # logger.warning('modify here')
     change_pp_gb(n_gene_cols, fn_count_pp_gb, analysis.pwout, rep1, rep2, window_size, factor1=factor1, factor2=factor2, factor_flag=factor_flag, islongerna=True)
     
     logger.debug('Dump pindex.txt')
@@ -3900,20 +3867,7 @@ def prioritize_enhancer(pwout, fn_peak, rep1, rep2, direction, weight, fdr_thres
                     else:
                         fscore = abs(enhchange[enh_id] / temax) * sum([abs(_[1]) for _ in glist]) / prev_max_fc
                 
-                # modify here
-                if enh_id == '907':
-                    logger.debug(glist)
-                    header = header[:-1].split('\t')
-                    logger.debug(list(zip(header, line)))
-                    tmp = use_default_fscore(enh_id)
-                    logger.debug(f'nearest peak distance = {dis_to_p[enh_id]}')
-                    fdr_tmp = enhfdr.get(enh_id)
-                    change_tmp = enhchange.get(enh_id)
-                    logger.debug(f'use default fscore = {tmp}, enh FDR = {fdr_tmp}, enh chagne = {change_tmp}')
-                    tmp = sum([_[1] for _ in glist])
-                    tmp1 = sum([abs(_[1]) for _ in glist]) 
-                    logger.debug(f'linked change file = {fn_change}')
-                    logger.debug(f'enhchange = {enhchange[enh_id]},  temax = {temax}, fc_sum = {tmp}, fc_sum_abs = {tmp1}, prev_max_fc = {prev_max_fc}')
+
                 print(f'{i[:-1]}\t{fscore}\t{bscore}', file=o)
 
         df = pd.read_csv(fn_enhancer_prior, sep='\t')

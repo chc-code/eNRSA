@@ -6,17 +6,23 @@ import argparse as arg
 from argparse import RawTextHelpFormatter
 ps = arg.ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
 ps.add_argument('fls', help="""read alignment file(s) in bam/bed format, can be multiple, sep by space, if bam is specified, will be onverted to bed first""", nargs='+')
-ps.add_argument('-r', '--region', help="""region(s) to count, in the format of chr:start-end:strand, can be multiple, sep by space, coordinate is 1-indexed""", nargs='+')
-ps.add_argument('-R', '-fn_region', '-bed', help="""bed file containing the region(s) to count, in the format of chr start end, strand. optional, 5th column can be the region name. 0-indexed, will be ignored if -r is specified""")
+ps.add_argument('--region', '-r', help="""region(s) to count, in the format of chr:start-end:strand, can be multiple, sep by space, coordinate is 1-indexed""", nargs='+')
+ps.add_argument('-fn_region', '-R', '-bed', help="""bed file containing the region(s) to count, in the format of chr start end, strand. optional, 5th column can be the region name. 0-indexed, will be ignored if -r is specified""")
+ps.add_argument('--verbose', '-v', help="""show debug level log""", action='store_true')
+ps.add_argument('-demo', '-validate', '-test', help="""get the count of the region manually, used to validate the result, only accept -region as input""", action='store_true')
 args = ps.parse_args()
 
 
 import os, sys, re
-from ..utils import get_peak_method1, get_peak_method2, pre_count_for_bed, refine_chr, process_input
+import gzip
+import logging
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+from nrsa_v2.utils import get_peak_method1, get_peak_method2, pre_count_for_bed, refine_chr, process_input
 
 
-def getlogger(fn_log=None, logger_name=None, nocolor=False):
-    import logging
+def getlogger(fn_log=None, logger_name=None, nocolor=False, debug=False):
+    
     logger_name = logger_name or "main"
     
     try:
@@ -79,7 +85,8 @@ def getlogger(fn_log=None, logger_name=None, nocolor=False):
     if 'console' not in handler_names:
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(CustomFormatter(nocolor=nocolor))
-        console.setLevel('INFO')
+        console_level = 'DEBUG' if debug else 'INFO'
+        console.setLevel(console_level)
         console.name = 'console'
         logger.addHandler(console)
 
@@ -90,11 +97,34 @@ def getlogger(fn_log=None, logger_name=None, nocolor=False):
         fh_file.name = 'file'
         logger.addHandler(fh_file)
     return logger
+
+def updatelogger(logger, fn_log, terminal_level=None):
+    handlers = list(logger.handlers)
+    handler_name_d = {v.name: idx for idx, v in enumerate(handlers)}
+    fh_console = handlers[handler_name_d['console']]
+    formatter = fh_console.formatter
+    valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'FATAL'}
+    if terminal_level:
+        terminal_level = terminal_level.upper()
+        if terminal_level not in valid_levels:
+            logger.error(f'invalid logging level: {terminal_level} ')
+            return logger
+    if fn_log and 'file' not in handler_name_d:
+        fh_file = logging.FileHandler(fn_log, mode='w', encoding='utf8')
+        fh_file.setLevel('DEBUG')
+        fh_file.setFormatter(formatter)
+        fh_file.name = 'file'
+        logger.addHandler(fh_file)
+    if terminal_level is not None:
+        fh_console.setLevel(terminal_level)
+    return logger
 logger = getlogger(fn_log='get_region_count.log', logger_name='NRSA')
+if args.verbose:
+    logger = updatelogger(logger, None, 'DEBUG')
 logger.debug(vars(args))
 
 def get_region(regions_terminal, regions_bed):
-    regioins = {}
+    regions = {}
     invalid_input = []
     
     def validate(orig_str, chr_, start, end, strand):
@@ -108,12 +138,17 @@ def get_region(regions_terminal, regions_bed):
             invalid_input.append(f'start/end_not_int\t{orig_str}')
             return 1
         
+        if start > end:
+            invalid_input.append(f'start_larger_than_end\t{orig_str}')
+            return 1
+        
         return chr_, start, end, strand
 
     
     if regions_terminal:
         for i in regions_terminal:
-            tmp = re.split(r'[:-]', i.lower())
+            i = re.sub(r'[\W_]+', ':', i[:-1]) + i[-1]
+            tmp = re.split(r':', i)
             if len(tmp) != 4:
                 invalid_input.append(f'missing_fields\t{i}')
                 continue
@@ -138,6 +173,9 @@ def get_region(regions_terminal, regions_bed):
                 start += 1
                 k = tmp[4] if len(tmp) > 4 else f'{chr_}:{start}-{end}:{strand}'
                 regions[k] = [chr_, start, end, strand]
+    if len(invalid_input) > 0:
+        logger.error(f'Invalid input:\n\t{"\n\t".join(invalid_input)}')
+
     return regions
 
 def main(pwd, fls, regions):
@@ -152,13 +190,13 @@ def main(pwd, fls, regions):
         count_per_base, count_bin = pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True)
         bin_size = count_bin['bin_size']
         for k, [chr_, start, end, strand] in regions.items():
-            # get_peak_method1(count_per_base, chr_, strand, s, e)
+            # get_peak_method1(count_per_base, chr_, strand_idx, s, e)
             # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
             if end - start > bin_size:
                 strand_idx = 0 if strand == '+' else 1
                 res[k][i_file] = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, start, end, bin_size)
             else:
-                res[k][i_file] = get_peak_method1(count_per_base, chr_, strand, start, end)
+                res[k][i_file] = get_peak_method1(count_per_base, chr_, strand_idx, start, end)
 
 
     # dump the results to tsv, row = region col = fn_lb
@@ -191,24 +229,87 @@ def main(pwd, fls, regions):
         print(format_line(header_l, col_width))
         for k, v in res.items():
             print(format_line([k] + v, col_width))
+
+
+def get_count_manual(fn_bed, chr_, start, end, strand):
+    """
+    get the count by iterate over the bed file, used to validat the result
+    """
+    # example:
+        # 1	235824344	236029220	-	LYST	(gb_start, gb_end)
+        # count of 4 files (hg19 , 4104-AW-1 to 4): 1934	1686	1986	1327
+    
+    with gzip.open(fn_bed, 'rt') if fn_bed.endswith('.gz') else open(fn_bed) as f:
+        ct = 0
+        chr_found = 0
         
+        for line in f:
+            line = line.strip().split('\t')
+            chr_ = refine_chr(line[0])
+            if chr_ != chr_:
+                if chr_found:
+                    break
+                continue
+            if strand != line[5]:
+                continue
+            chr_found = 1
+            s, e = int(line[1]), int(line[2])
+            read_end = e if strand == '+' else s
+            if start <= read_end <= end:
+                ct += 1
+            if s > end:
+                break
+        
+    return ct
+            
+
 
 if __name__ == "__main__":
     pwd = os.getcwd()
-    fls = args.fls
+    fls_raw = args.fls
     regions_terminal = args.region
     regions_bed = args.fn_region
-
+    
+    if args.demo and not regions_terminal:
+        logger.error(f'--demo can only be used with --region')
+        sys.exit(1)
+    if args.demo:
+        region_bed = None
+    
+    
+    logger.info('Parsing regino input')
     regions = get_region(regions_terminal, regions_bed)
     if len(regions) == 0:
         logger.error(f'No region specified')
         sys.exit(1)
     
+    fls = []
+    fls_dedup = set()
+    for fn in fls_raw:
+        fn = os.path.realpath(fn)
+        if fn in fls_dedup:
+            continue
+        fls_dedup.add(fn)
+        fls.append(fn)
+    # logger.debug(fls)
+    # sys.exit(1)
     
     # convert bam to bed if needed
-    fls = process_input(pwd, fls)  # each element is [fn_lb, fn_bed]
+    logger.info('Processing input files')
+    fls = process_input(pwd, fls, respect_sorted=True)  # each element is [fn_lb, fn_bed]
     if fls is None:
         logger.error(f'No valid input file')
         sys.exit(1)
-    
-    
+    if not args.demo:
+        main(pwd, fls, regions)
+    else:
+        logger.warning(f'demo mode, will get the count manually')
+        res = {}
+        for fn_lb, fn_bed in fls:
+            for region_name, [chr_, start, end, strand] in regions.items():
+                ict = get_count_manual(fn_bed, chr_, start, end, strand)
+                res.setdefault(region_name, []).append(ict)
+        
+        print([_[0] for _ in fls])
+        for k, v in res.items():
+            print(k, v)

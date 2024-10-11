@@ -1,4 +1,4 @@
-#! /data/cqs/chenh19/project/nrsa_v2/miniconda3/bin/python3.12
+#! /usr/bin/env python3
 """
 process PROseq data
 """
@@ -46,11 +46,12 @@ import pickle
 import json
 import traceback
 import gc
+sys.dont_write_bytecode = True
 
 from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, pre_count_for_bed, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table
 
 from utils import Analysis, process_bed_files
-sys.dont_write_bytecode = True
+
 
 time_cost = {}
 now = time.time()
@@ -245,13 +246,6 @@ def main(args):
 
     build_design_table(pwout, args.in1, args.in2, args.batches)
 
-    # logger.warning('debug adding batches to design table, modify here')
-    
-    # fn_metadata = f'{pwout}/intermediate/design_table_for_deseq2.txt'
-    # os.system(f'cat {fn_metadata}')
-    
-    # sys.exit(1)
-
     analysis = Analysis(args, skip_get_mapped_reads=demo)
     if analysis.status:
         logger.error("Exit now")
@@ -325,6 +319,7 @@ def main(args):
     len1 = len(gtf_info_new)
     logger.debug(f'initial gtf dict = {len(gtf_info)}, total skipped = {total_skipped}, detail = {skipped_ts} merged transcript = {merged_transcripts}, total count before merge = {len1 + merged_transcripts}, current ts count = {len1}')
     
+    
     gtf_info = gtf_info_new
     fls = analysis.input_fls # element is [fn_lb, fn_bed]
     sam_order = [_[0] for _ in fls]
@@ -396,6 +391,11 @@ def main(args):
         header_gb += [f'gbc_{fn_lb}', f'gbd_{fn_lb}']
         header_pp.append(f'ppc_{fn_lb}')
     header += header_pp + header_gb
+
+    logger.debug(header)
+    logger.debug(pp_str['NM_000081.3'])
+    logger.debug(gb_str['NM_000081.3'])
+    
     
     with open(fn_count_pp_gb, 'w') as o:
         print('\t'.join(header), file=o)
@@ -406,6 +406,19 @@ def main(args):
             if not analysis.longerna:
                 row.append(gene_info['gene_name'])
             row +=  [gene_info['chr'], str(gene_info['start']), str(gene_info['end']), gene_info['strand']]
+            row += pp_str[transcript_id] + gb_str[transcript_id]
+            print('\t'.join(row), file=o)
+
+
+    fn_count_pp_gb_debug = f'{pwout}/intermediate/count_pp_gb_debug.txt'
+    with open(fn_count_pp_gb_debug, 'w') as o:
+        header = analysis.gene_cols + ['chr', 'start', 'end', 'strand', 'pp_range', 'gb_range'] + header_pp + header_gb
+        print('\t'.join(header), file=o)
+        for transcript_id in pp_str:
+            gene_info = gtf_info[transcript_id]
+            pp_range = f'{gene_info["chr"]}:{gene_info["pp_start"]}-{gene_info["pp_end"]}:{gene_info["strand"]}'
+            gb_range = f'{gene_info["chr"]}:{gene_info["gb_start"]}-{gene_info["gb_end"]}:{gene_info["strand"]}'
+            row = [transcript_id, gene_info['gene_name'], gene_info['chr'], str(gene_info['start']), str(gene_info['end']), gene_info['strand'], pp_range, gb_range]
             row += pp_str[transcript_id] + gb_str[transcript_id]
             print('\t'.join(row), file=o)
 

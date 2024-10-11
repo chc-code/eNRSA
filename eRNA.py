@@ -1,5 +1,4 @@
-#! /data/cqs/chenh19/project/nrsa_v2/miniconda3/bin/python3.12
-
+#! /usr/bin/env python3
 
 import os, sys, time
 import re
@@ -7,6 +6,7 @@ import traceback
 import pickle
 import logging
 from types import SimpleNamespace
+sys.dont_write_bytecode = True
 
 # global var
 bin_dir = os.path.dirname(os.path.realpath(__file__))
