@@ -3438,7 +3438,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         return 1
 
     if rep2 < 1:
-        logger.error(f'case samples must be available to find alternative isoforms')
+        logger.warning(f'No case samples, skip finding alternative isoforms')
         return 1
     
     # round the value
