@@ -2247,6 +2247,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             if is_sorted:
                 fn_abs = os.path.realpath(fn)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
+                logger.debug(f'Creating symlink for sorted bed file: {fn_abs} -> {fn_dest}')
                 os.symlink(fn_abs, fn_dest)
                 ires = [fn_lb, fn_dest]
             else:
@@ -2744,6 +2745,7 @@ class Analysis:
         self.known_gene_dir = os.path.join(self.pwout, 'known_gene')
         self.longerna = is_long_eRNA # toggle if this is long eRNA
         self.skip_get_mapped_reads = skip_get_mapped_reads
+        respect_sorted = vars(args).get('sorted', False)
 
         for lb, d in zip(['Output', 'Intermediate', 'Known Genes'], [self.pwout, self.inter_dir, self.known_gene_dir]):
             if not os.path.exists(d):
@@ -2758,11 +2760,11 @@ class Analysis:
             self.status = 1
 
         # input files
-        in1 = process_input(self.pwout_raw, args.in1) if raw_input else args.in1 # return = fn_lb, fn_bed
+        in1 = process_input(self.pwout_raw, args.in1, respect_sorted=respect_sorted) if raw_input else args.in1 # return = fn_lb, fn_bed
         if in1 is None:
             logger.error("Invalid input files provided for condition1")
             self.status = 1
-        in2 = (process_input(self.pwout_raw, args.in2) or []) if raw_input else args.in2
+        in2 = (process_input(self.pwout_raw, args.in2, respect_sorted=respect_sorted) or []) if raw_input else args.in2
         self.control_bed = in1
         self.case_bed = in2
         

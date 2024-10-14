@@ -31,6 +31,7 @@ def getargs():
     ps.add_argument('-verbose', '-v', help="""verbose mode, print more information""", action='store_true')
     ps.add_argument('-demo', help="""demo mode, skip running the get_mapped_reads step if already exist""", action='store_true')
     ps.add_argument('-ignore', help="""ignore the existing pre-counting results""", action='store_true')
+    ps.add_argument('-sorted', help="""the input bed files are sorted, skip the sorting step""", action='store_true')
     # ps.add_argument('-testfunc', help="""test the new functions,debug mode""", action='store_true')
     args = ps.parse_args()
     

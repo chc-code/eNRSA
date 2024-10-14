@@ -51,6 +51,7 @@ def getargs():
     ps.add_argument('-fdr', '-cf', help="""valid when -pri set for two conditions. Cutoff to select significant transcriptional changes (default: FDR < 0.05). Use Foldchange instead if no FDR is generated (default: Foldchange > 1.5)""", type=float, default=0.05)
     ps.add_argument('-demo', help="""skip HOMER makeTagDirectory if already done""", action='store_true')
     ps.add_argument('-verbose', '-v', help="""verbose mode, show debug level logging info""", action='store_true')
+    ps.add_argument('-sorted', help="""the input bed files are sorted, skip the sorting step""", action='store_true')
     args = ps.parse_args()
     return args
 
