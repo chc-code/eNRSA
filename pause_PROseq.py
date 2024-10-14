@@ -393,10 +393,6 @@ def main(args):
         header_pp.append(f'ppc_{fn_lb}')
     header += header_pp + header_gb
 
-    logger.debug(header)
-    logger.debug(pp_str['NM_000081.3'])
-    logger.debug(gb_str['NM_000081.3'])
-    
     
     with open(fn_count_pp_gb, 'w') as o:
         print('\t'.join(header), file=o)
