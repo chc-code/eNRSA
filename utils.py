@@ -1996,6 +1996,9 @@ def process_gtf(fn_gtf, pwout):
             if line_err:
                 tmp = err.setdefault(line_err, 0)
                 err[line_err] += 1
+                if err[line_err] < 10:
+                    logger.debug(f'error during processing gtf {line_err}: {i}')
+                
                 continue
             
             if '_' in chr_:
