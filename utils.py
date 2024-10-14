@@ -1994,6 +1994,7 @@ def process_gtf(fn_gtf, pwout):
                 line_err = 'gene_name_not_found'
             
             if line_err:
+                tmp = err.setdefault(line_err, 0)
                 err[line_err] += 1
                 continue
             
