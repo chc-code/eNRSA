@@ -177,6 +177,7 @@ def main(args):
     fn_gtf = args.gtf
     fn_fa = args.fa
     pwout_raw = args_d.get('pwout_raw', pwout)
+    respect_sorted = vars(args).get('sorted', False)
 
     status = 0
     logger.debug('start running')
@@ -199,11 +200,11 @@ def main(args):
     pw_homer = f'{pwout}/intermediate/HOMER_tag'
     args.pw_homer = pw_homer
 
-    in1 = process_input(pwout_raw, args.in1) # return = fn_lb, fn_bed
+    in1 = process_input(pwout_raw, args.in1, respect_sorted=respect_sorted) # return = fn_lb, fn_bed
     if in1 is None:
         logger.error("Invalid input files provided for condition1")
         status = 1
-    in2 = process_input(pwout_raw, args.in2) or []
+    in2 = process_input(pwout_raw, args.in2, respect_sorted=respect_sorted) or []
     control_bed = in1
     case_bed = in2
     logger.debug(f'processed in1 = {in1}, processed in2 = {in2}')
