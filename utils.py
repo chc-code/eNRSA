@@ -22,6 +22,7 @@ import statsmodels.stats.contingency_tables as contingency_tables
 from scipy.stats import chi2
 import warnings
 import urllib.request
+import hashlib
 sys.dont_write_bytecode = True
 
 pw_code = os.path.dirname(os.path.realpath(__file__))
@@ -160,7 +161,7 @@ def build_idx_for_fa(fn_fa):
     lb = os.path.basename(fn_fa).rsplit('.', 1)[0]
     fn_fa = os.path.abspath(fn_fa)
     fa_size = os.path.getsize(fn_fa)
-    fa_name_hash = get_md5_str(fn_fa)[:5]
+    fa_name_hash = get_md5_str(fn_fa)[:8]
     
     
     # check if have write permission to the folder of the fa file
@@ -414,7 +415,6 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
     return ref_files
 
 def get_md5(fn):
-    import hashlib
     with open(fn, "rb") as f:
         md5 = hashlib.md5()
         while chunk := f.read(8192):
@@ -2980,7 +2980,7 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
             s = time.time()
             gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
             # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
-            last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
+            # last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
 
             pp_str[transcript_id].append(str(pp_res['ppc']))
             gb_str[transcript_id] += [str(gbc), str(gbd)]
