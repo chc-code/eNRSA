@@ -18,7 +18,7 @@ import gzip
 import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
-from nrsa_v2.utils import get_peak_method1, get_peak_method2, pre_count_for_bed, refine_chr, process_input
+from nrsa.utils import get_peak_method1, get_peak_method2, pre_count_for_bed, refine_chr, process_input
 
 
 def getlogger(fn_log=None, logger_name=None, nocolor=False, debug=False):
