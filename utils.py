@@ -1933,9 +1933,9 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     
     
     # logger.warning(fn_gtf)
-
-    fn_tss = f'{pwout}/intermediate/{fn_gtf_lb}.tss.txt'
-    fn_tss_tts = f'{pwout}/intermediate/{fn_gtf_lb}.tss_tts.txt'
+    if pwout is not None:
+        fn_tss = f'{pwout}/intermediate/{fn_gtf_lb}.tss.txt'
+        fn_tss_tts = f'{pwout}/intermediate/{fn_gtf_lb}.tss_tts.txt'
     
     # check if have write permission to the folder of the gtf file
     if not os.access(os.path.dirname(fn_gtf), os.W_OK) or fn_gtf.startswith('/app/nrsa'):
@@ -1960,7 +1960,7 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
         
         with open(fn_gtf_pkl, 'rb') as f:
             gtf_info = pickle.load(f)
-        if not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts):
+        if pwout is not None and not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts):
             build_tss(gtf_info, fn_tss, fn_tss_tts)
 
         return gtf_info, fn_tss, fn_tss_tts, err
@@ -2080,7 +2080,8 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     with open(fn_gtf_meta_json, 'w') as o:
         json.dump(meta, o, indent=4)
 
-    build_tss(res, fn_tss, fn_tss_tts)
+    if pwout is not None:
+        build_tss(res, fn_tss, fn_tss_tts)
     err_total = sum(err.values())
     if err_total:
         logger.info(f'error in parsing gtf file: {err}')
