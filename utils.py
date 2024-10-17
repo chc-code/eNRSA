@@ -159,6 +159,9 @@ def build_idx_for_fa(fn_fa):
 
     lb = os.path.basename(fn_fa).rsplit('.', 1)[0]
     fn_fa = os.path.abspath(fn_fa)
+    fa_size = os.path.getsize(fn_fa)
+    fa_name_hash = get_md5_str(fn_fa)[:5]
+    
     
     # check if have write permission to the folder of the fa file
     if not os.access(os.path.dirname(fn_fa), os.W_OK):
@@ -168,7 +171,8 @@ def build_idx_for_fa(fn_fa):
     else:
         fa_pwout = os.path.dirname(fn_fa)
         
-    fn_idx = f'{fa_pwout}/{lb}.idx.pkl'
+    fn_idx = f'{fa_pwout}/{lb}.size_{fa_size}_{fa_name_hash}.idx.pkl'
+    logger.debug(f'fa_pwout = {fa_pwout}, fn_idx = {fn_idx}')
     if os.path.exists(fn_idx):
         logger.debug(f'loading fasta index file: {fn_idx}')
         with open(fn_idx, 'rb') as f:
@@ -183,7 +187,8 @@ def build_idx_for_fa(fn_fa):
             if not i:
                 break
             if i[0] == '>':
-                chr_ = refine_chr(i[1:-1].lower())
+                chr_ = re.split(r'[\s\|:\[\]]+', i[1:].strip(), 1)[0] # avoid the chromosome with trailing strings
+                chr_ = refine_chr(chr_)
                 s_pos = f.tell()
                 res[chr_] = [s_pos, 0]
             elif chr_:
@@ -194,7 +199,7 @@ def build_idx_for_fa(fn_fa):
     
     tmp = sorted(line_width.items(), key=lambda _: _[1], reverse=True)
     word_wrap, freq = tmp[0]
-    logger.debug(f'word wrap = {word_wrap}, lines width = {tmp}')
+    logger.debug(f'idx saved to {fn_idx}, word wrap = {word_wrap}, lines width = {tmp}')
     res['line_width'] = word_wrap
     with open(fn_idx, 'wb') as o:
         pickle.dump(res, o)
@@ -414,6 +419,11 @@ def get_md5(fn):
         md5 = hashlib.md5()
         while chunk := f.read(8192):
             md5.update(chunk)
+    return md5.hexdigest()
+
+def get_md5_str(s):
+    md5 = hashlib.md5()
+    md5.update(s.encode())
     return md5.hexdigest()
 
 def download_file_task(url, save_path, md5_exp=None):
@@ -1852,6 +1862,7 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
 def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding):
     strand = gene_info['strand']
     gene_raw_s, gene_raw_e = gene_info['start'], gene_info['end']
+    last_exon_s, last_exon_e = gene_info['last_exon']
     if strand == '+':
         pp_start = gene_raw_s - pro_up
         pp_end = gene_raw_s + pro_down - 1
@@ -1861,6 +1872,7 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
         strand_idx = 0
         tts_start = gene_raw_e
         tts_end = gene_raw_e + tts_padding
+        tts_down_50k_s, tts_down_50k_e = gene_raw_e, gene_raw_e + 50_000
     else:
         pp_start = gene_raw_e - (pro_down - 1)
         pp_end = gene_raw_e + pro_up
@@ -1870,6 +1882,7 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
         strand_idx = 1
         tts_start = gene_raw_s - tts_padding
         tts_end = gene_raw_s
+        tts_down_50k_s, tts_down_50k_e = gene_raw_s - 50_000, gene_raw_s
     
     # modify here
     # skip the get gene_seq step
@@ -1886,8 +1899,8 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
     gb_len_mappable = gb_end - gb_start + 1 - gb_seq_N
 
     new_info = dict(zip(
-        ['pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end'], 
-        [ pp_start,   pp_end,   gb_start ,  gb_end ,  strand_idx ,  gb_len_mappable,   gene_seq, tts_start, tts_end]
+        ['pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'last_exon_s', 'last_exon_e', 'tts_down_50k_s', 'tts_down_50k_e'], 
+        [ pp_start,   pp_end,   gb_start ,  gb_end ,  strand_idx ,  gb_len_mappable,   gene_seq, tts_start, tts_end, last_exon_s, last_exon_e, tts_down_50k_s, tts_down_50k_e]
         ))
     gene_info.update(new_info)
     return gene_info
@@ -1903,7 +1916,7 @@ def build_tss(gtf_info, fn_tss, fn_tss_tts):
             f.write(f'{v["chr"]}\t{itss}\t{itss}\t{k}\t{v["strand"]}\n')
             o2.write(f'{v["chr"]}\t{itss}\t{itts}\t{k}\t{v["strand"]}\n')
 
-def process_gtf(fn_gtf, pwout):
+def process_gtf(fn_gtf, pwout, force_rebuild=False):
     """
     process the gtf file, get the gene start and end position, and other info
     gtf position is 1-idx, full closed
@@ -1935,7 +1948,7 @@ def process_gtf(fn_gtf, pwout):
     
     if os.path.exists(fn_gtf_pkl_default):
         fn_gtf_pkl = fn_gtf_pkl_default
-    if os.path.exists(fn_gtf_pkl):
+    if os.path.exists(fn_gtf_pkl) and not force_rebuild:
         logger.debug(f'loading gtf from pickle: {fn_gtf_pkl}')
         
         with open(fn_gtf_pkl, 'rb') as f:
@@ -1957,6 +1970,7 @@ def process_gtf(fn_gtf, pwout):
     }
     res_raw = {}  # k1 = gene name, k2 = transcript_id, v = {'chr': '', 'strand': '', 'gene_id': '', 'gene_name': '', 'start': 0, 'end': 0}
     
+    last_exon = {}
     with gzip.open(fn_gtf, 'rt') if fn_gtf.endswith('.gz') else open(fn_gtf) as f:
         while True:
             i = f.readline()
@@ -2008,7 +2022,13 @@ def process_gtf(fn_gtf, pwout):
             # {'chr': '', 'strand': '', 'gene_name': '', 'start': 0, 'end': 0}
             ires_exon = {'chr': chr_, 'strand': strand, 'gene_name': gene_name, 'start': start, 'end': end}
             ires = res_raw.setdefault(gene_name, {}).setdefault(transcript_id, ires_exon)
-            
+            if strand == '+':
+                # if plus strand, will keep changing, leaving only the last appearance
+                last_exon[transcript_id] = (start, end)
+            elif transcript_id not in last_exon:
+                # if on minus strand, will only try if transcript id is not found before
+                last_exon[transcript_id] = (start, end)
+                
             
             # deal with the case when the same transcript-ID with different chr or strand
             if chr_ != ires['chr'] or strand != ires['strand']:
@@ -2039,7 +2059,9 @@ def process_gtf(fn_gtf, pwout):
                 n_merged += len(transcript_list) - 1
                 
             transcript_id_new = ';'.join(transcript_list)
-            res[transcript_id_new] = v1[transcript_list[0]]
+            transcript_id_demo = transcript_list[0]
+            res[transcript_id_new] = v1[transcript_id_demo]
+            res[transcript_id_new]['last_exon'] = last_exon[transcript_id_demo]
     meta['n_merged'] = n_merged
     meta['final_n_transcripts'] = len(res)
     logger.debug(f'g@merged {n_merged} transcripts with same start and end position')
@@ -2943,6 +2965,7 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
         for transcript_id in ts_list_copy:
             gene_info = gtf_info[transcript_id]
             chr_, strand, gene_raw_s, pp_start, pp_end, gb_start, gb_end, strand_idx, gb_len_mappable, gene_seq, tts_start, tts_end = [gene_info[_] for _ in ['chr', 'strand', 'start', 'pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end']]
+            last_exon_s, last_exon_e = gene_info['last_exon']
 
             n += 1
             if n % section_size == 0:
@@ -2956,6 +2979,8 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
             # pp_res: {'ppc': prev[0], 'ppd': ppd, 'mappable_sites': mappable_sites, 'summit_pos': summit_pos_str, 'summit_count': summit_count}
             s = time.time()
             gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
+            # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
+            last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
 
             pp_str[transcript_id].append(str(pp_res['ppc']))
             gb_str[transcript_id] += [str(gbc), str(gbd)]
