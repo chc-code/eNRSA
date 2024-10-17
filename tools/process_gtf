@@ -84,7 +84,29 @@ def getlogger(fn_log=None, logger_name=None, nocolor=False):
         fh_file.name = 'file'
         logger.addHandler(fh_file)
     return logger
-logger = getlogger()
+logger = getlogger(logger_name='NRSA')
+
+def updatelogger(logger, fn_log, terminal_level=None):
+    handlers = list(logger.handlers)
+    handler_name_d = {v.name: idx for idx, v in enumerate(handlers)}
+    fh_console = handlers[handler_name_d['console']]
+    formatter = fh_console.formatter
+    valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'FATAL'}
+    if terminal_level:
+        terminal_level = terminal_level.upper()
+        if terminal_level not in valid_levels:
+            logger.error(f'invalid logging level: {terminal_level} ')
+            return logger
+    if fn_log and 'file' not in handler_name_d:
+        fh_file = logging.FileHandler(fn_log, mode='w', encoding='utf8')
+        fh_file.setLevel('DEBUG')
+        fh_file.setFormatter(formatter)
+        fh_file.name = 'file'
+        logger.addHandler(fh_file)
+    if terminal_level is not None:
+        fh_console.setLevel(terminal_level)
+    return logger
+
 
 def refine_chr(chr_):
     chr_ = chr_.strip().lower()
@@ -100,6 +122,8 @@ if __name__ == "__main__":
     ps = arg.ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
     ps.add_argument("fn", help="gtf file path")
     ps.add_argument('-force', '-f', help="""force rebuilt the pickle file even already exist""", action='store_true')
+    ps.add_argument('-v', help="""verbose""")
     args = ps.parse_args()
-    
-    process_gtf(args.fn, args.force)
+    if args.v:
+        logger = updatelogger(logger, terminal_level='DEBUG')
+    process_gtf(args.fn, pwout=None, force=args.force)
