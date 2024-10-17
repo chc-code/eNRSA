@@ -1960,7 +1960,7 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
         
         with open(fn_gtf_pkl, 'rb') as f:
             gtf_info = pickle.load(f)
-        if not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts):
+        if pwout is not None and not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts):
             build_tss(gtf_info, fn_tss, fn_tss_tts)
 
         return gtf_info, fn_tss, fn_tss_tts, err
