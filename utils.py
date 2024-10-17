@@ -1925,13 +1925,20 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     err = {'no_transcript_id': 0, 'no_gene_name': 0, 'invalid_line_format': 0, 'invalid_strand': 0}
     fn_gtf = os.path.realpath(fn_gtf)
     fn_gtf_lb = os.path.basename(fn_gtf).replace('.gz', '').replace('.gtf', '')
+    
+    fn_gtf_md5 = get_md5_str(fn_gtf)[:8]
+    fn_gtf_size = os.path.getsize(fn_gtf)
+    fn_gtf_lb = f'{fn_gtf_lb}_md5_{fn_gtf_md5}_size_{fn_gtf_size}'
+    logger.debug(f'input gtf file = {fn_gtf}, file name string md5sum = {fn_gtf_md5}, file size = {fn_gtf_size}')
+    
+    
     # logger.warning(fn_gtf)
 
     fn_tss = f'{pwout}/intermediate/{fn_gtf_lb}.tss.txt'
     fn_tss_tts = f'{pwout}/intermediate/{fn_gtf_lb}.tss_tts.txt'
     
     # check if have write permission to the folder of the gtf file
-    if not os.access(os.path.dirname(fn_gtf), os.W_OK):
+    if not os.access(os.path.dirname(fn_gtf), os.W_OK) or fn_gtf.startswith('/app/nrsa'):
         home = os.path.expanduser("~")
         gtf_pwout = f'{home}/.nrsa'
         os.makedirs(gtf_pwout, exist_ok=True)
