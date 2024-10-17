@@ -654,6 +654,7 @@ def draw_box_plot(n_gene_cols, pwout, out_name, n_rep1, n_rep2=None, gn_list=Non
                 
 
     # write to file
+    logger.debug(f'data for box plot saved to {fno}')
     with open(fno, 'w') as o:
         o.write('\t'.join(header_str) + '\n')
         for k in sorted(out_str):
@@ -1909,6 +1910,7 @@ def build_tss(gtf_info, fn_tss, fn_tss_tts):
     # create the TSS file
     # chr1	11874	11874	NR_046018.2	+
     logger.info('creating TSS file')
+    logger.debug(f'fn_tss = {fn_tss}, fn_tss_tts = {fn_tss_tts}')
     with open(fn_tss, 'w') as f, open(fn_tss_tts, 'w') as o2:
         for k, v in gtf_info.items():
             itss, itts = [v['start'], v['end']] if v['strand'] == '+' else [v['end'], v['start']]
@@ -1931,11 +1933,12 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     fn_gtf_lb = f'{fn_gtf_lb}_md5_{fn_gtf_md5}_size_{fn_gtf_size}'
     logger.debug(f'input gtf file = {fn_gtf}, file name string md5sum = {fn_gtf_md5}, file size = {fn_gtf_size}')
     
+    logger.debug({'fn_gtf': fn_gtf, 'pwout': pwout, 'force_rebuild': force_rebuild, 'fn_gtf_lb': fn_gtf_lb})
     
     # logger.warning(fn_gtf)
-    if pwout is not None:
-        fn_tss = f'{pwout}/intermediate/{fn_gtf_lb}.tss.txt'
-        fn_tss_tts = f'{pwout}/intermediate/{fn_gtf_lb}.tss_tts.txt'
+    fn_tss = f'{pwout}/intermediate/{fn_gtf_lb}.tss.txt'
+    fn_tss_tts = f'{pwout}/intermediate/{fn_gtf_lb}.tss_tts.txt'
+    
     
     # check if have write permission to the folder of the gtf file
     if not os.access(os.path.dirname(fn_gtf), os.W_OK) or fn_gtf.startswith('/app/nrsa'):
@@ -1948,19 +1951,24 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     if 'gtf' not in fn_gtf.rsplit('.', 2)[-2:]:
         logger.error(f'the gtf file should have the extension of .gtf: {fn_gtf}')
         sys.exit(1)
-        return None, fn_tss, fn_tss_tts, err
     fn_gtf_pkl_default = f'{os.path.dirname(fn_gtf)}/{fn_gtf_lb}.gtf_info.pkl'
     fn_gtf_pkl = f'{gtf_pwout}/{fn_gtf_lb}.gtf_info.pkl'
     fn_gtf_meta_json = f'{gtf_pwout}/{fn_gtf_lb}.gtf_meta.json'
     
     if os.path.exists(fn_gtf_pkl_default):
         fn_gtf_pkl = fn_gtf_pkl_default
+    logger.debug(f'fn_gtf_pkl = {fn_gtf_pkl}, fn_gtf_meta_json = {fn_gtf_meta_json}')
+    if os.path.exists(fn_gtf_meta_json):
+        # print the content
+        with open(fn_gtf_meta_json) as f:
+            logger.debug(f'gtf_meta_json = \n{f.read()}')
+
     if os.path.exists(fn_gtf_pkl) and not force_rebuild:
         logger.debug(f'loading gtf from pickle: {fn_gtf_pkl}')
         
         with open(fn_gtf_pkl, 'rb') as f:
             gtf_info = pickle.load(f)
-        if pwout is not None and not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts):
+        if pwout is not None and (not os.path.exists(fn_tss) or not os.path.exists(fn_tss_tts)):
             build_tss(gtf_info, fn_tss, fn_tss_tts)
 
         return gtf_info, fn_tss, fn_tss_tts, err
@@ -2039,8 +2047,14 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
             
             # deal with the case when the same transcript-ID with different chr or strand
             if chr_ != ires['chr'] or strand != ires['strand']:
-                transcript_id_new = f'{transcript_id}_{chr_}_{strand}'
+                transcript_id_new = f'{transcript_id}@{chr_}@{strand}'
                 ires = res_raw.setdefault(gene_name, {}).setdefault(transcript_id_new, ires_exon)
+                if strand == '+':
+                    # if plus strand, will keep changing, leaving only the last appearance
+                    last_exon[transcript_id_new] = (start, end)
+                elif transcript_id_new not in last_exon:
+                    # if on minus strand, will only try if transcript id is not found before
+                    last_exon[transcript_id_new] = (start, end)
 
             if start < ires['start']:
                 ires['start'] = start
@@ -2075,9 +2089,11 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False):
     # logger.debug(meta)
     
     with open(fn_gtf_pkl, 'wb') as o:
+        logger.debug(f'dump to {fn_gtf_pkl}')
         pickle.dump(res, o)
     
     with open(fn_gtf_meta_json, 'w') as o:
+        logger.debug(f'dump to {fn_gtf_meta_json}')
         json.dump(meta, o, indent=4)
 
     if pwout is not None:
@@ -2216,6 +2232,9 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
         sys.exit(1)
     logger.info('done.')
     # dump the pickle
+    
+    
+    logger.debug(f'dumping to pickle: {fn_count_per_base}, {fn_count_bin}, {fn_chr_map}')
     with open(fn_count_per_base, 'wb') as f:
         pickle.dump(count_per_base, f)
     with open(fn_count_bin, 'wb') as f:
