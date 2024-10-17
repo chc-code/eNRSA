@@ -60,6 +60,14 @@ def green(s, p=False):
         print(s_new)
     return s_new
 
+def force_symlink(src, dst):
+    try:
+        os.symlink(src, dst)
+    except FileExistsError:
+        # If the symlink already exists, remove it and create a new one
+        os.remove(dst)
+        os.symlink(src, dst)
+
 def getlogger(fn_log=None, logger_name=None, nocolor=False, verbose=False):
     import logging
     logger_name = logger_name or "main"
@@ -305,13 +313,13 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
     if fn_fa and not os.path.exists(fn_fa_exp_write):
         os.makedirs(os.path.dirname(fn_fa_exp_write), exist_ok=True)
         try:
-            os.symlink(fn_fa, fn_fa_exp_write)
+            force_symlink(fn_fa, fn_fa_exp_write)
         except:
             pass
     if fn_gtf and not os.path.exists(fn_gtf_exp_write):
         os.makedirs(os.path.dirname(fn_gtf_exp_write), exist_ok=True)
         try:
-            os.symlink(fn_gtf, fn_gtf_exp_write)
+            force_symlink(fn_gtf, fn_gtf_exp_write)
         except:
             pass
     
@@ -2301,7 +2309,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
                 fn_abs = os.path.realpath(fn)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
                 logger.debug(f'Creating symlink for sorted bed file: {fn_abs} -> {fn_dest}')
-                os.symlink(fn_abs, fn_dest)
+                force_symlink(fn_abs, fn_dest)
                 ires = [fn_lb, fn_dest]
             else:
                 logger.info(f'Sorting input file: {fn}')
@@ -2746,7 +2754,7 @@ def change_enhancer(pwout, fn_count_enhancer, factors_d, n_ctrl, n_case, sam_ctr
         # no case samples
         if n_ctrl == 1:
             try:
-                os.symlink(fn_count_enhancer, fn_norm)
+                force_symlink(fn_count_enhancer, fn_norm)
             except:
                 logger.warning(f'fail to create symlink from {fn_count_enhancer} to {fn_norm}')
         else:
