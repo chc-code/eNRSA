@@ -230,7 +230,9 @@ def main(args):
     for attr, default in optional_attrs.items():
         if attr not in defined_attrs:
             setattr(args, attr, default)
-        
+    
+    logger.debug(f'g@args={vars(args)}')
+    
     benchmode = args.bench
     # check dependencies
     dependency_status = check_dependency()

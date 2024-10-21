@@ -3097,6 +3097,8 @@ def get_tts_downstream_no_overlap_region(gtf):
                 break
         if not overlap_found:
             no_overlap.add(k)
+    
+    logger.debug(f'total = {len(gtf)}, no_overlap = {len(no_overlap)}')
     return no_overlap
 
 
