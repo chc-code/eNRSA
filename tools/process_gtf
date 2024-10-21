@@ -7,7 +7,7 @@ import os, sys, re
 import pickle, json, gzip
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
-from nrsa_v2.utils import process_gtf
+from nrsa.utils import process_gtf
 
 def getlogger(fn_log=None, logger_name=None, nocolor=False):
     import logging
@@ -123,7 +123,14 @@ if __name__ == "__main__":
     ps.add_argument("fn", help="gtf file path")
     ps.add_argument('-force', '-f', help="""force rebuilt the pickle file even already exist""", action='store_true')
     ps.add_argument('-v', help="""verbose""", action='store_true')
+    ps.add_argument('-docker', '-d', help="""build the pkl file for docker, will pass in the fake_gtf_path""", action='store_true')
     args = ps.parse_args()
     if args.v:
         logger = updatelogger(logger, terminal_level='DEBUG')
-    process_gtf(args.fn, pwout=None, force_rebuild=args.force)
+    
+    if args.docker:
+        tmp = '/'.join(args.fn.split('/')[-2:])
+        fake_gtf_path = f'/app/nrsa/ref/{tmp}'
+    else:
+        fake_gtf_path = None
+    process_gtf(args.fn, pwout=None, force_rebuild=args.force, fake_gtf_path=fake_gtf_path)

@@ -1925,17 +1925,21 @@ def build_tss(gtf_info, fn_tss, fn_tss_tts):
             f.write(f'{v["chr"]}\t{itss}\t{itss}\t{k}\t{v["strand"]}\n')
             o2.write(f'{v["chr"]}\t{itss}\t{itts}\t{k}\t{v["strand"]}\n')
 
-def process_gtf(fn_gtf, pwout, force_rebuild=False):
+def process_gtf(fn_gtf, pwout, force_rebuild=False, fake_gtf_path=None):
     """
     process the gtf file, get the gene start and end position, and other info
     gtf position is 1-idx, full closed
+    fake_gtf_path is just used for building the pre-built pkl file inside of the docker container
     """
 
     err = {'no_transcript_id': 0, 'no_gene_name': 0, 'invalid_line_format': 0, 'invalid_strand': 0}
     fn_gtf = os.path.realpath(fn_gtf)
     fn_gtf_lb = os.path.basename(fn_gtf).replace('.gz', '').replace('.gtf', '')
     
-    fn_gtf_md5 = get_md5_str(fn_gtf)[:8]
+    if fake_gtf_path is not None:
+        fn_gtf_md5 = get_md5_str(fake_gtf_path)[:8]
+    else:
+        fn_gtf_md5 = get_md5_str(fn_gtf)[:8]
     fn_gtf_size = os.path.getsize(fn_gtf)
     fn_gtf_lb = f'{fn_gtf_lb}_md5_{fn_gtf_md5}_size_{fn_gtf_size}'
     logger.debug(f'input gtf file = {fn_gtf}, file name string md5sum = {fn_gtf_md5}, file size = {fn_gtf_size}')
