@@ -4143,4 +4143,11 @@ def show_system_info():
     group = os.popen('groups').read().strip()
     # get other basic info
     logger.debug(f'hostname = {hostname}, user = {user}, group = {group}')
+    logger.debug(f'python version = {sys.version}')
+    # show python path for executing this script
+    logger.debug(f'python path = {sys.executable}')
+    logger.info(f'utils path = {__file__}')
+    logger.info(f'current working directory = {os.getcwd()}')
+    from __init__ import __version__, __doc__
+    logger.info(f'current version = {__version__}, doc = {__doc__}')
     
