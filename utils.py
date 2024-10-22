@@ -1867,10 +1867,13 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
     # logger.info(f'pindex_change done : {ana_type}')
     # logger.info(data_out.head())
 
-def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=50_000):
+def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=50_000, islongerna=False):
     strand = gene_info['strand']
     gene_raw_s, gene_raw_e = gene_info['start'], gene_info['end']
-    last_exon_s, last_exon_e = gene_info['last_exon']
+    if not islongerna:
+        last_exon_s, last_exon_e = gene_info['last_exon']
+    else:
+        last_exon_s, last_exon_e = None, None
     if strand == '+':
         pp_start = gene_raw_s - pro_up
         pp_end = gene_raw_s + pro_down - 1
@@ -3103,7 +3106,7 @@ def get_tts_downstream_no_overlap_region(gtf):
 
 
 
-def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True):
+def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False):
     
     invalid_chr_transcript = 0
     bin_size = analysis.bin_size
@@ -3130,8 +3133,10 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
     for ts, v in gtf_info.items():
         chr_ = v['chr']
         gtf_info_new.setdefault(chr_, {})[ts] = v
-        
-    ts_without_overlap_50k = get_tts_downstream_no_overlap_region(gtf_info)
+    if islongerna:
+        ts_without_overlap_50k = set()
+    else:
+        ts_without_overlap_50k = get_tts_downstream_no_overlap_region(gtf_info)
     
     
     # seq_pool = {} # key = transcript_id
@@ -3180,7 +3185,7 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
             for transcript_id in ts_list_chr:
                 gene_info = gtf_info[transcript_id]
                 chr_, strand, gene_raw_s, pp_start, pp_end, gb_start, gb_end, strand_idx, gb_len_mappable, gene_seq, tts_start, tts_end, tts_down_region_s, tts_down_region_e = [gene_info[_] for _ in ['chr', 'strand', 'start', 'pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'tts_down_region_s', 'tts_down_region_e']]
-                last_exon_s, last_exon_e = gene_info['last_exon']
+                
 
                 n += 1
                 if n % section_size == 0:
@@ -3197,6 +3202,7 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
                 # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
                 # get the count for last exon and the downstream 50kb region
                 if transcript_id in ts_without_overlap_50k:
+                    last_exon_s, last_exon_e = gene_info['last_exon']
                     last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
                     tts_down_50k_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, tts_down_region_s, tts_down_region_e, bin_size)
                     last_exon_len = last_exon_e - last_exon_s + 1
@@ -3564,7 +3570,7 @@ def pause_longeRNA_main(args):
             tss, tts = (s, e) if strand == '+' else (e, s)
             gene_name = f'{chr}:{s}-{e}:{strand}'
             ires = {'chr': chr_, 'strand': strand, 'start': s, 'end': e, 'tss': tss, 'tts': tts, 'gene_name': gene_name}
-            gtf_info[ts] = add_value_to_gtf(ires, pro_up, pro_down, gb_down_distance, tts_padding) 
+            gtf_info[ts] = add_value_to_gtf(ires, pro_up, pro_down, gb_down_distance, tts_padding, islongerna=True) 
     
     # prepare fasta file
     fn_fa = analysis.ref['fa']
@@ -3588,7 +3594,7 @@ def pause_longeRNA_main(args):
     else:
         reuse_pre_count = True
         logger.info(f'Getting pp_gb count')
-        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False)
+        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False, islongerna=True)
         close_fh()
     
         # count_pp_gb
