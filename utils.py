@@ -296,7 +296,7 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
         os.makedirs(f'{pw_code_write}/{i}', exist_ok=True)
         
     # if the organism is not in the list, check fn_gtf and fn_fa, if either is None, return None, otherwise, use it and create a folder in pw_code/ref and pw_code/fa and create symlink
-    builtin_organisms = ['ce10', 'dm3', 'dm6', 'hg19', 'hg38', 'mm10', 'danrer10']
+    builtin_organisms = ['ce10', 'dm3', 'dm6', 'hg19', 'hg38', 'mm10', 'mm39', 'danrer10']
     fn_extra_org = f'{pw_code_write}/ref/extra_organisms.txt'
     
     if os.path.exists(fn_extra_org):
@@ -455,7 +455,7 @@ def download_ref_files(organism, need_download, ref_files):
     """
     download the missing reference files
     """
-    builtin_organisms = ['ce10', 'dm3', 'dm6', 'hg19', 'hg38', 'mm10', 'danrer10']
+    builtin_organisms = ['ce10', 'dm3', 'dm6', 'hg19', 'hg38', 'mm10', 'mm39', 'danrer10']
     if organism not in builtin_organisms:
         logger.error(f'organism {organism} not in the builtin list, please provide the gtf and fa file')
         sys.exit(1)
