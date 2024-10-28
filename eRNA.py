@@ -160,7 +160,7 @@ def updatelogger(logger, fn_log, terminal_level=None):
 logger = getlogger(logger_name='NRSA')
 
 
-from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer
+from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink
 
 
 def main(args):
@@ -630,10 +630,10 @@ if __name__ == "__main__":
     terminal_level = 'DEBUG' if args.verbose else None
     logger = updatelogger(logger, fn_log, terminal_level=terminal_level)
 
-    if os.path.exists(fn_log_base):
-        os.unlink(fn_log_base)
-    if os.path.exists(fn_log):
-        os.symlink(fn_log, fn_log_base)
+    try:
+        force_symlink(fn_log, fn_log_base)
+    except:
+        pass
 
     logger.debug(f'working in {os.getcwd()}')
     logger.debug(f'inpu args = {vars(args)}')

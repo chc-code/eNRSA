@@ -7,7 +7,7 @@ import os, re
 import json
 import traceback # use trackback.format_exc() to capture info
 home = os.path.expanduser("~")
-
+import numpy as np
 
 hostname = os.uname()[1].split('.')[0]
 
@@ -218,7 +218,7 @@ def prepare_config(pwd):
     # logger.info(f'config = {tmp}')
     return config
 
-def create_sh(pwd, config, n_rep, version=None):
+def create_sh(pwd, config, n_rep, version=None, force=False):
     """
     create the script for run both step1 and step2, each one repeat n_rep times
     """
@@ -297,7 +297,7 @@ def create_sh(pwd, config, n_rep, version=None):
     for step in ['step1', 'step2']:
         for lb, v in record[step].items():
             for fn_sh, fn_log in v:
-                if os.path.exists(fn_log):
+                if not force and os.path.exists(fn_log):
                     # check if there are "script finished without error" in the log file, if yes, skip
                     with open(fn_log) as f:
                         if 'script finished without error' in f.read():
@@ -376,6 +376,9 @@ def plot_benchmark_results(df, fn_figure):
     tick_label_size_gtf_row = 15
     axis_title_size=21
     title_size=25
+    bar_label_padding = 8
+    
+    from matplotlib.container import ErrorbarContainer
     
     for i, category in enumerate(df['category'].unique()):
         data = df[df['category'] == category]
@@ -384,8 +387,13 @@ def plot_benchmark_results(df, fn_figure):
         
         grouped = grouped.sort_index(key=lambda x: x.map(extract_number))
 
+        if category == 'gtf':
+            x_labels = [_.replace(' ', '\n') for _ in grouped.index]
+        else:
+            x_labels = grouped.index
+
         ax_text = fig.add_subplot(gs[i * 2, :])
-        ax_text.text(0.5, -0.6, category_map[category], 
+        ax_text.text(0.5, -0.4, category_map[category], 
                     ha='center', va='center', fontsize=title_size, fontweight='bold',
                     bbox=dict(facecolor='none', pad=0, edgecolor='none'))
         ax_text.axis('off')  # Hide axes for text box
@@ -396,26 +404,58 @@ def plot_benchmark_results(df, fn_figure):
         # Time plot
         # ax = axes[i, 0]
         ax = fig.add_subplot(gs[i * 2 + 1, 0])
-        x = range(len(grouped.index))
+        # x = range(len(grouped.index))
         # ax.bar(x, grouped[('time', 'mean')], yerr=grouped[('time', 'std')], capsize=5)
         # use seaborn to plot barplot with hue
+        # ax.set_xticks(x)
+        # ax.set_xticklabels(grouped.index)
+        
         sns.barplot(x='lb', y='time', hue='version', data=data, 
-                capsize=0.1, errwidth=1, errorbar='sd', ax=ax)
+                capsize=0.1, errwidth=1, errorbar='sd', ax=ax, order=grouped.index)
         ax.set_ylabel('Time (s)', fontsize=axis_title_size)
-        ax.tick_params(labelsize=tick_label_size_gtf_row if category == 'gtf' else tick_label_size)
-        ax.set_xticks(x)
-        ax.set_xticklabels(grouped.index)
+        ax.tick_params(axis='y', labelsize=tick_label_size)
+        ax.tick_params(axis='x', labelsize=tick_label_size_gtf_row if category == 'gtf' else tick_label_size)
+        ax.set_xticklabels(x_labels)
+        ax.set_xlabel('')
+        
+        error_bars = ax.lines
+        
+        idx_bar = 0
+        for container in ax.containers:
+            labels = ax.bar_label(container, padding=7, fmt='%.0f')
+            plt.setp(labels, fontsize=tick_label_size - 1)
 
+            # n_labels = len(labels)
+            # for label in labels:
+            #     error_bar_top = error_bars[idx_bar].get_ydata()
+            #     idx_bar += 1
+            #     if not np.isnan(error_bar_top[1]):
+            #         label.set_y(error_bar_top[1])
+            #         logger.info(error_bar_top[1])
+
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(ymin, ymax * 1.05)
+        
+        
         # Memory plot
         # ax = axes[i, 1]
         ax = fig.add_subplot(gs[i * 2 + 1, 1])
         # ax.bar(x, grouped[('mem', 'mean')], yerr=grouped[('mem', 'std')], capsize=5)
         sns.barplot(x='lb', y='mem', hue='version', data=data, 
-                capsize=0.1, errwidth=1, errorbar='sd', ax=ax)
+                capsize=0.1, errwidth=1, errorbar='sd', ax=ax, order=grouped.index)
         ax.set_ylabel('Memory (GB)', fontsize=axis_title_size)
-        ax.tick_params(labelsize=tick_label_size_gtf_row if category == 'gtf' else tick_label_size)
-        ax.set_xticks(x)
-        ax.set_xticklabels(grouped.index)
+        ax.tick_params(axis='y', labelsize=tick_label_size)
+        ax.tick_params(axis='x', labelsize=tick_label_size_gtf_row if category == 'gtf' else tick_label_size)
+        ax.set_xticklabels(x_labels)
+        ax.set_xlabel('')
+        for container in ax.containers:
+            labels = ax.bar_label(container, padding=bar_label_padding, fmt='%.2f')
+            plt.setp(labels, fontsize=tick_label_size - 1)
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(ymin, ymax * 1.05)
+
+        # ax.set_xticks(x)
+        # ax.set_xticklabels(grouped.index)
         
         # for spine in ax.spines.values():
         #     spine.set_visible(True)
@@ -456,11 +496,11 @@ def collect_bench_res(script_settings):
     not_ready = []
     ts_count_d = {}
     res_step1_step2 = {}
-    for version in ['v2', 'v1']:
+    for version in ['v1', 'v2']:
         config = script_settings[version]
         
-        logger.warning(f'modify here, use version2 logs to mimic version1')
-        config = script_settings['v2']
+        # logger.warning(f'modify here, use version2 logs to mimic version1')
+        # config = script_settings['v2']
         
         for step in ['step1', 'step2']:
             v1 = config[step]
@@ -468,8 +508,8 @@ def collect_bench_res(script_settings):
                 # if lb ends with GB, category = size, if ends with _sam, category = sam_number, else category = gtf
                 category = 'size' if lb.endswith('GB') else 'sam_number' if lb.endswith('_sam') else 'gtf'
                 for i_rep, (fn_sh, fn_log) in enumerate(v2):
-                    if fn_log.endswith(f'16_sam_step1_3.log'):
-                        fn_log = fn_log.replace('step1_3.log', 'step1_3.new.log')
+                    # if fn_log.endswith(f'16_sam_step1_3.log'):
+                    #     fn_log = fn_log.replace('step1_3.log', 'step1_3.new.log')
                     
                     if not os.path.exists(fn_log):
                         not_ready.append(fn_log)
@@ -494,7 +534,7 @@ def collect_bench_res(script_settings):
                     lb_new = lb_convert.get(lb, lb)
                     if category == 'gtf':
                         ts_count_new = f'{ts_count/1000:.1f}K'
-                        lb_new = f'{lb}\n{ts_count_new}'
+                        lb_new = f'{lb} {ts_count_new}'
                     if category == 'sam_number':
                         lb_new = f'n={lb.split("_")[0]}'
                     res_l.append([version, step, category, lb_new, i_rep, time, mem])
@@ -507,14 +547,14 @@ def collect_bench_res(script_settings):
         
     for v in res_step1_step2.values():
         res_l.append(v)
-
+    
     if not_ready:
         tmp = '\n\t'.join(not_ready)
         logger.error(f'files not ready n = {len(not_ready)}:\n\t{tmp}')
 
     # write to csv
     with open('bench_res.csv', 'w') as f:
-        f.write('version, step,category,lb,i_rep,time,mem\n')
+        f.write('version,step,category,lb,i_rep,time,mem\n')
         for r in res_l:
             f.write(','.join(map(str, r)) + '\n')
 
@@ -522,6 +562,7 @@ def collect_bench_res(script_settings):
     df = pd.DataFrame(res_l, columns=['version', 'step', 'category', 'lb', 'i_rep', 'time', 'mem'])
     for k in ['step1', 'step2', 'step1_step2']:
         df_k = df[df['step'] == k]
+        
         fn_figure = f'bench_res_{k}.png'
         plot_benchmark_results(df_k, fn_figure)
         logger.info(f'figure saved to {fn_figure}')
@@ -532,9 +573,10 @@ if __name__ == "__main__":
     from argparse import RawTextHelpFormatter
     ps = arg.ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
     ps.add_argument('action', help="""action to run, can be script/build, collect/plot""", choices=['script', 'build', 'collect', 'plot'])
+    ps.add_argument('-force', '-f', help="""force build the script, ignore the existing log files""", action='store_true')
     args = ps.parse_args()
 
-
+    force = args.force
     if hostname not in ['cqs3', 'bioinfo2']:
         print('This script should be run in cqs3 or bioinfo2')
         sys.exit(1)
@@ -565,7 +607,7 @@ if __name__ == "__main__":
         logger.info('create sh')
         script_settings = {}
         for version in ['v1', 'v2']:
-            script_settings[version] = create_sh(pwd, config, n_rep, version=version)
+            script_settings[version] = create_sh(pwd, config, n_rep, version=version, force=force)
         with open(f'{pwd}/bench_settings.json', 'w') as f:
             json.dump(script_settings, f, indent=4)
 

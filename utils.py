@@ -505,8 +505,7 @@ def get_peak_method1(count_per_base, chr_, strand_idx, s, e):
     # sum from the per-base pre-count dict
     ct_sum = 0
     # strand_idx = 0 if strand == '+' else 1
-    res_chr = count_per_base[chr_]
-    return sum([res_chr.get(i, [0, 0])[strand_idx] for i in range(s, e + 1)])
+    return sum([count_per_base.get(i, [0, 0])[strand_idx] for i in range(s, e + 1)])
 
 def get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size):
     # compared to get_peak_method1 function
@@ -524,7 +523,7 @@ def get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size
     bin_start = s // bin_size
     bin_end = e // bin_size
     if bin_end - bin_start < 2:
-        return sum([count_per_base[chr_].get(i, [0, 0])[strand_idx] for i in range(s, e + 1)])
+        return sum([count_per_base.get(i, [0, 0])[strand_idx] for i in range(s, e + 1)])
     # the region is covered by 3 or more bins
     points = []
     left_mod = s % bin_size
@@ -536,7 +535,7 @@ def get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size
         points += range(bin_end * bin_size, e + 1)
     else:
         bin_list = range(bin_start + 1, bin_end + 1)
-    return sum([count_per_base[chr_].get(i, [0, 0])[strand_idx] for i in points]) + sum([count_bin[chr_].get(i, [0, 0])[strand_idx] for i in bin_list])
+    return sum([count_per_base.get(i, [0, 0])[strand_idx] for i in points]) + sum([count_bin.get(i, [0, 0])[strand_idx] for i in bin_list])
 
 def get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq, window_size, step_size, bin_size, prev_pp_peak):
     # {'chr': '5', 'strand': '-', 'gene_name': 'PFDN1', 'start': 139682626, 'end': 139682689}
@@ -557,7 +556,7 @@ def get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp
     
     
     # get all the sites count in pp region
-    pp_region_count = [count_per_base[chr_].get(i, [0, 0])[strand_idx] for i in range(pp_start, pp_end + 1)]
+    pp_region_count = [count_per_base.get(i, [0, 0])[strand_idx] for i in range(pp_start, pp_end + 1)]
     window_ct = [(i, sum(pp_region_count[i: i + window_size])) for i in range(0, pp_end - pp_start - window_size + 2, step_size)]
     peak_window_start, ppc  = max(window_ct, key=lambda _: _[1]) 
     peak_window_ct = [(i, pp_region_count[i]) for i in range(peak_window_start, peak_window_start + window_size)]
@@ -1868,10 +1867,13 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
     # logger.info(f'pindex_change done : {ana_type}')
     # logger.info(data_out.head())
 
-def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding):
+def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=50_000, islongerna=False):
     strand = gene_info['strand']
     gene_raw_s, gene_raw_e = gene_info['start'], gene_info['end']
-    last_exon_s, last_exon_e = gene_info['last_exon']
+    if not islongerna:
+        last_exon_s, last_exon_e = gene_info['last_exon']
+    else:
+        last_exon_s, last_exon_e = None, None
     if strand == '+':
         pp_start = gene_raw_s - pro_up
         pp_end = gene_raw_s + pro_down - 1
@@ -1881,7 +1883,7 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
         strand_idx = 0
         tts_start = gene_raw_e
         tts_end = gene_raw_e + tts_padding
-        tts_down_50k_s, tts_down_50k_e = gene_raw_e, gene_raw_e + 50_000
+        tts_down_region_s, tts_down_region_e = gene_raw_e, gene_raw_e + tts_down_length
     else:
         pp_start = gene_raw_e - (pro_down - 1)
         pp_end = gene_raw_e + pro_up
@@ -1891,7 +1893,7 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
         strand_idx = 1
         tts_start = gene_raw_s - tts_padding
         tts_end = gene_raw_s
-        tts_down_50k_s, tts_down_50k_e = gene_raw_s - 50_000, gene_raw_s
+        tts_down_region_s, tts_down_region_e = gene_raw_s - tts_down_length, gene_raw_s
     
     # modify here
     # skip the get gene_seq step
@@ -1908,8 +1910,8 @@ def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding)
     gb_len_mappable = gb_end - gb_start + 1 - gb_seq_N
 
     new_info = dict(zip(
-        ['pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'last_exon_s', 'last_exon_e', 'tts_down_50k_s', 'tts_down_50k_e'], 
-        [ pp_start,   pp_end,   gb_start ,  gb_end ,  strand_idx ,  gb_len_mappable,   gene_seq, tts_start, tts_end, last_exon_s, last_exon_e, tts_down_50k_s, tts_down_50k_e]
+        ['pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'last_exon_s', 'last_exon_e', 'tts_down_region_s', 'tts_down_region_e'], 
+        [ pp_start,   pp_end,   gb_start ,  gb_end ,  strand_idx ,  gb_len_mappable,   gene_seq, tts_start, tts_end, last_exon_s, last_exon_e, tts_down_region_s, tts_down_region_e]
         ))
     gene_info.update(new_info)
     return gene_info
@@ -2173,7 +2175,7 @@ def get_lb(fn):
 
 
 
-def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
+def pre_count_for_bed_legacy(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
     """
     process the bed file, and get the count of the read end regarding strand.
     will export 2 files, 
@@ -2261,6 +2263,117 @@ def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
     
     
     return count_per_base, count_bin
+
+
+def pre_count_for_bed(fn_lb, fn_out_bed, pw_bed, bin_size=200, reuse=True):
+    """
+    process the bed file, and get the count of the read end regarding strand.
+    will export 2 files, 
+    1. dict, key = chr, k2 = strand, k3 = chunk_number. value = count of reads with read end in this chunk.  the chunk_number is got from position // bin_size  (default chunksize = 10bp)
+    2. bed file, record the read end chr, read_end position, strand and the count of reads with this read end position
+    
+    bin_size = 200 # compared bin size of 10, 20, 50, 100 and 200 and 500.  200 is the best, maybe because when getting the gb count, the size fit the distribution
+    return chr_map is used to make the chr pattern in the gtf file and input bed file consistant, esp. when running bedtools
+
+    """
+    fn_chr_map = f'{pw_bed}/{fn_lb}.chr_map.pkl'
+    fn_n_lines = f'{pw_bed}/{fn_lb}.line_count.txt'
+    
+    fn_pre_count_list_json = f'{pw_bed}/{fn_lb}.pre_count_list.json'
+    
+    if reuse and os.path.exists(fn_pre_count_list_json) and os.path.getsize(fn_pre_count_list_json) > 10:
+        ok = 1
+        with open(fn_pre_count_list_json) as f:
+            file_list = json.load(f)
+            for chr_, (fn_count_per_base, fn_count_bin) in file_list.items():
+                if not os.path.exists(fn_count_per_base) or not os.path.exists(fn_count_bin):
+                    ok = 0
+                    break
+        if ok:
+            logger.info(f'Reuse existing pre-counting results - {fn_lb}...')
+            return file_list
+
+    file_list = {} # key = chr, v = fn_count_per_base, fn_count_bin
+    chr_map = {}
+    logger.info(f'Pre-counting for {fn_lb}')
+    n_lines = 0
+    n_error = 0
+    single_col = 0
+    fatal = 0
+    count_bin = {'bin_size': bin_size}
+    count_per_base = {}
+    chr_prev = None
+    
+    
+    def dump_res(chr_prev, count_per_base, count_bin):
+        # dump the pickle
+        chr_prev_new = refine_chr(chr_prev)
+        chr_map[chr_prev_new] = chr_prev
+        fn_count_bin = f'{pw_bed}/{fn_lb}.count.bin_of_{bin_size}_chr{chr_prev_new}.pkl'
+        fn_count_per_base = f'{pw_bed}/{fn_lb}.count.per_base_chr{chr_prev_new}.pkl'
+        logger.debug(f'dumping to pickle: {fn_count_per_base}, {fn_count_bin}')
+        with open(fn_count_per_base, 'wb') as f:
+            pickle.dump(count_per_base, f)
+        with open(fn_count_bin, 'wb') as f:
+            pickle.dump(count_bin, f)
+        file_list[chr_prev_new] = (fn_count_per_base, fn_count_bin)
+        logger.debug('dump to pickle done.')
+        count_bin = {'bin_size': bin_size}
+        count_per_base = {}
+        return count_per_base, count_bin
+    
+    
+    with gzip.open(fn_out_bed, 'rt') if fn_out_bed.endswith('.gz') else open(fn_out_bed, 'r') as fh_bed:
+        for i in fh_bed:
+            # chr1	10511	10569	A00758:60:HNYK7DSXX:4:2461:27181:23171	32	-
+            try:
+                chr_, s, e, _, _, strand, *_ = i[:-1].split('\t', 6)
+            except:
+                nchr, ncol = len(i), len(i.split('\t'))
+                logger.debug(f'Invalid line format: nchar = {nchr}, ncol = {ncol}, first 100 char = {i[:100]}')
+                if ncol == 1:
+                    single_col += 1
+                else:
+                    n_error += 1
+                    if n_error > 100:
+                        fatal = 1
+                        break
+                continue
+            # because we are examining where the transcript stops/pauses
+            # so we only care about the read end, no matter if we will use it in TSS or TTS or gene body calculation
+            strand_idx, read_end = (0, int(e)) if strand == '+' else (1, int(s) + 1)
+            if chr_prev and chr_ != chr_prev:
+                count_per_base, count_bin = dump_res(chr_prev, count_per_base, count_bin)
+
+
+            chunk = read_end // bin_size
+            count_bin.setdefault(chunk, [0, 0])
+            count_bin[chunk][strand_idx] += 1
+
+            count_per_base.setdefault(read_end, [0, 0])  # for each read end, the count of + and - strand
+            count_per_base[read_end][strand_idx] += 1
+            n_lines += 1
+            chr_prev = chr_
+    # dump the last chr
+    if chr_prev:
+        count_per_base, count_bin = dump_res(chr_prev, count_per_base, count_bin)
+
+    if n_error:
+        prefix = 'more than ' if fatal else ''
+        logger.error(f'{prefix} {n_error} lines with invalid format were found, check the input file: {fn_out_bed} and \nlog file for details.\nthe first 6 columns should be chr, start, end, read_name, score, strand')
+        logger.error(f'now exiting...')
+        sys.exit(1)
+    logger.info('done.')
+
+    with open(fn_chr_map, 'wb') as f:
+        pickle.dump(chr_map, f)
+    logger.debug('dump to pickle done.')
+    
+    with open(fn_n_lines, 'w') as f:
+        f.write(f'{n_lines}\n')
+    with open(fn_pre_count_list_json, 'w') as o:
+        json.dump(file_list, o, indent=3)
+    return file_list
 
 
 def process_input(pwout_raw, fls, respect_sorted=False):
@@ -2942,7 +3055,58 @@ class Analysis:
         }
         
 
-def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True):
+
+def get_tts_downstream_no_overlap_region(gtf):
+    overlap = {}
+    no_overlap = set()
+    intervals = {} # key is chr
+    for k, v in gtf.items():
+        try:
+            intervals.setdefault(v['chr'], []).append((v['start'], v['end'], v['gene_name']))
+        except:
+            logger.error(f'error in {k}, {v}')
+            sys.exit(1)
+    for tmp in intervals.values():
+        tmp.sort()
+    intervals_sort_end = {k: sorted(v, key=lambda x: x[1]) for k, v in intervals.items()}
+    
+    for k, v in gtf.items():
+        tts = v['tts']
+        gn, chr_, strand = v['gene_name'], v['chr'], v['strand']
+        s1, e1 = (tts, tts + 50000) if v['strand'] == '+' else (tts - 50000, tts)
+        overlap_found = False
+
+        if strand == '+':
+            idx = bisect.bisect_left(intervals[chr_], (s1,))
+            search_range = range(idx, len(intervals[chr_]))
+            search_l = intervals[chr_]
+        else:
+            idx = bisect.bisect_right(intervals[chr_], (e1,))
+            search_range = range(idx, -1, -1)
+            search_l = intervals_sort_end[chr_]
+        
+        for i in search_range:
+            s2, e2, gn2 = search_l[i]
+            if strand == '+' and s2 > e1:
+                # print(f'break: {search_l[i]}')
+                break
+            elif strand == '-' and s1 > e2:
+                break
+            if gn2 == gn:
+                continue
+            if not (s1 > e2 or s2 > e1):
+                overlap.setdefault(gn, set()).add(gn2)
+                overlap_found = True
+                break
+        if not overlap_found:
+            no_overlap.add(k)
+    
+    logger.debug(f'total = {len(gtf)}, no_overlap = {len(no_overlap)}')
+    return no_overlap
+
+
+
+def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False):
     
     invalid_chr_transcript = 0
     bin_size = analysis.bin_size
@@ -2963,6 +3127,16 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
     pp_str = {ts: [] for ts in ts_list}
     gb_str = {ts: [] for ts in ts_list}
     tts_str = {ts: [str(gtf_info[ts][_]) for _ in ['chr', 'strand', 'tts']] for ts in ts_list}
+    tts_down_50k_str = {}
+    # reformat the gtf_info by chrom
+    gtf_info_new = {}  # k1 = chr, k2 = ts
+    for ts, v in gtf_info.items():
+        chr_ = v['chr']
+        gtf_info_new.setdefault(chr_, {})[ts] = v
+    if islongerna:
+        ts_without_overlap_50k = set()
+    else:
+        ts_without_overlap_50k = get_tts_downstream_no_overlap_region(gtf_info)
     
     
     # seq_pool = {} # key = transcript_id
@@ -2972,21 +3146,21 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
     n_ts_init = len(ts_list)
     for fn_lb, fn_bed in fls:
         logger.info(f'processing {fn_lb}')
+        fh_bed_peaks = analysis.out_fls['bed_peaks'][fn_lb]['fh']
 
-        count_per_base, count_bin = pre_count_for_bed(fn_lb, fn_bed, pw_bed, bin_size, reuse=reuse_pre_count)
-        bin_size = count_bin['bin_size']
+        pre_count_flist = pre_count_for_bed(fn_lb, fn_bed, pw_bed, bin_size, reuse=reuse_pre_count)
+        
         prev_peak = {}
         # exclude the ts that the chr not in the bed files
-        valid_chr = set(count_per_base)
+        valid_chr = set(pre_count_flist)
         chr_excluded = {}
         ts_excluded = 0
-        ts_list_copy = ts_list.copy()
         
         for ts, v in gtf_info.items():
             ts_chr = v['chr']
             if ts_chr not in valid_chr:
                 ts_excluded += 1
-                ts_list_copy.remove(ts)
+                gtf_info_new[ts_chr].pop(ts)
                 if ts in pp_str:
                     del pp_str[ts]
                 if ts in gb_str:
@@ -2996,55 +3170,82 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
                 chr_excluded.setdefault(ts_chr, 0)
                 chr_excluded[ts_chr] += 1
         if ts_excluded > 0:
-            n_ts_now = len(ts_list_copy)
             logger.info(f'{ts_excluded} transcripts in GTF file excluded due to chromosome not exist in bed file')
-            logger.debug(f'init ts list = {n_ts_init}, current = {n_ts_now}, drop = {n_ts_init - n_ts_now}, exp drop = {ts_excluded}')
             logger.debug(f'excluded chr = {chr_excluded}')
-        fh_bed_peaks = analysis.out_fls['bed_peaks'][fn_lb]['fh']
-        for transcript_id in ts_list_copy:
-            gene_info = gtf_info[transcript_id]
-            chr_, strand, gene_raw_s, pp_start, pp_end, gb_start, gb_end, strand_idx, gb_len_mappable, gene_seq, tts_start, tts_end = [gene_info[_] for _ in ['chr', 'strand', 'start', 'pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end']]
-            last_exon_s, last_exon_e = gene_info['last_exon']
+        logger.debug(f'init ts list = {n_ts_init}, current = {n_ts_init - ts_excluded}, drop = {ts_excluded}')
 
-            n += 1
-            if n % section_size == 0:
-                now = time.time()
-                prev_time, prev_count = prev
-                time_gap = now - prev_time
-                speed = time_gap * 1000  / (n - prev_count)
-                logger.debug(f'{n/1000}k - get_mapped_reads_count count, time_gap={time_gap:.2}s, speed={speed:.3f}ms')
-                prev = [now, n]
-
-            # pp_res: {'ppc': prev[0], 'ppd': ppd, 'mappable_sites': mappable_sites, 'summit_pos': summit_pos_str, 'summit_count': summit_count}
-            s = time.time()
-            gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
-            # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
-            # last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
-
-            pp_str[transcript_id].append(str(pp_res['ppc']))
-            gb_str[transcript_id] += [str(gbc), str(gbd)]
-            tts_str[transcript_id].append(str(tts_ct))
+        for chr_, ts_list_chr in gtf_info_new.items():
+            fn_count_per_base, fn_count_bin = pre_count_flist[chr_]
+            with open(fn_count_per_base, 'rb') as f:
+                count_per_base = pickle.load(f)
+            with open(fn_count_bin, 'rb') as f:
+                count_bin = pickle.load(f)
+            bin_size = count_bin['bin_size']
             
-            # write to file
-            # row = ['Transcript', 'Gene', 'tssCount', 'tssLength', 'tssRatio', 'tssSummit_pos', 'genebodyCount', 'genebodyLength', 'genebodyRatio', 'tss_vs_genebody_ratio']
-            row = [transcript_id]
-            if not analysis.longerna:
-                row.append(gene_info['gene_name'])
-            row += [pp_res['ppc'], pp_res['mappable_sites'], pp_res['ppd'], pp_res['summit_pos'], gbc, gb_len_mappable, gbd]
-            pro_vs_pb = round(pp_res['ppd'] / gbd, 4) if gbd else 'NA'
-            row.append(pro_vs_pb)
+            for transcript_id in ts_list_chr:
+                gene_info = gtf_info[transcript_id]
+                chr_, strand, gene_raw_s, pp_start, pp_end, gb_start, gb_end, strand_idx, gb_len_mappable, gene_seq, tts_start, tts_end, tts_down_region_s, tts_down_region_e = [gene_info[_] for _ in ['chr', 'strand', 'start', 'pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'tts_down_region_s', 'tts_down_region_e']]
+                
+
+                n += 1
+                if n % section_size == 0:
+                    now = time.time()
+                    prev_time, prev_count = prev
+                    time_gap = now - prev_time
+                    speed = time_gap * 1000  / (n - prev_count)
+                    logger.debug(f'{n/1000}k - get_mapped_reads_count count, time_gap={time_gap:.2}s, speed={speed:.3f}ms')
+                    prev = [now, n]
+
+                # pp_res: {'ppc': prev[0], 'ppd': ppd, 'mappable_sites': mappable_sites, 'summit_pos': summit_pos_str, 'summit_count': summit_count}
+                s = time.time()
+                gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
+                # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
+                # get the count for last exon and the downstream 50kb region
+                if transcript_id in ts_without_overlap_50k:
+                    last_exon_s, last_exon_e = gene_info['last_exon']
+                    last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
+                    tts_down_50k_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, tts_down_region_s, tts_down_region_e, bin_size)
+                    last_exon_len = last_exon_e - last_exon_s + 1
+                    if transcript_id not in tts_down_50k_str:
+                        tts_down_50k_str[transcript_id] = [transcript_id, gene_info['gene_name'], chr_, strand, str(last_exon_len), str(last_exon_s), str(last_exon_e)]
+                    tts_down_50k_str[transcript_id] += [str(last_exon_ct), str(tts_down_50k_ct), f'{tts_down_50k_ct / last_exon_ct:.4f}' if last_exon_ct > 0 else 'NA']
+                
+
+                pp_str[transcript_id].append(str(pp_res['ppc']))
+                gb_str[transcript_id] += [str(gbc), str(gbd)]
+                tts_str[transcript_id].append(str(tts_ct))
+                
+                # write to file
+                # row = ['Transcript', 'Gene', 'tssCount', 'tssLength', 'tssRatio', 'tssSummit_pos', 'genebodyCount', 'genebodyLength', 'genebodyRatio', 'tss_vs_genebody_ratio']
+                row = [transcript_id]
+                if not analysis.longerna:
+                    row.append(gene_info['gene_name'])
+                row += [pp_res['ppc'], pp_res['mappable_sites'], pp_res['ppd'], pp_res['summit_pos'], gbc, gb_len_mappable, gbd]
+                pro_vs_pb = round(pp_res['ppd'] / gbd, 4) if gbd else 'NA'
+                row.append(pro_vs_pb)
+                
+                print('\t'.join(map(str, row)), file=fh_bed_peaks)
+            # # release memory
+            del count_per_base
+            del count_bin 
+            gc.collect()
             
-            print('\t'.join(map(str, row)), file=fh_bed_peaks)
-        # # release memory
-        del count_per_base
-        del count_bin 
-        gc.collect()
-        
     if fail_to_retrieve_seq:
         logger.warning(f'failed to retrieve sequence for {fail_to_retrieve_seq} genes')
 
     if invalid_chr_transcript:
         logger.warning(f"Number of genes with invalid chromosome = {invalid_chr_transcript}")
+
+
+    # save tts down 50k results
+    fn_tts_50k_down = f'{pwout}/intermediate/tts_down_50k.txt'
+    with open(fn_tts_50k_down, 'w') as o:
+        header = ['Transcript', 'Gene', 'chr', 'strand', 'last_exon_len', 'last_exon_s', 'last_exon_e']
+        for fn_lb, _ in fls:
+            header += [f'last_exon_{fn_lb}', f'tts_down_50k_{fn_lb}', f'ratio_{fn_lb}']
+        print('\t'.join(header), file=o)
+        for ts, v in tts_down_50k_str.items():
+            print('\t'.join(v), file=o)
 
 
     # save the tts_count
@@ -3369,7 +3570,7 @@ def pause_longeRNA_main(args):
             tss, tts = (s, e) if strand == '+' else (e, s)
             gene_name = f'{chr}:{s}-{e}:{strand}'
             ires = {'chr': chr_, 'strand': strand, 'start': s, 'end': e, 'tss': tss, 'tts': tts, 'gene_name': gene_name}
-            gtf_info[ts] = add_value_to_gtf(ires, pro_up, pro_down, gb_down_distance, tts_padding) 
+            gtf_info[ts] = add_value_to_gtf(ires, pro_up, pro_down, gb_down_distance, tts_padding, islongerna=True) 
     
     # prepare fasta file
     fn_fa = analysis.ref['fa']
@@ -3393,7 +3594,7 @@ def pause_longeRNA_main(args):
     else:
         reuse_pre_count = True
         logger.info(f'Getting pp_gb count')
-        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False)
+        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False, islongerna=True)
         close_fh()
     
         # count_pp_gb
@@ -3954,4 +4155,11 @@ def show_system_info():
     group = os.popen('groups').read().strip()
     # get other basic info
     logger.debug(f'hostname = {hostname}, user = {user}, group = {group}')
+    logger.debug(f'python version = {sys.version}')
+    # show python path for executing this script
+    logger.debug(f'python path = {sys.executable}')
+    logger.info(f'utils path = {__file__}')
+    logger.info(f'current working directory = {os.getcwd()}')
+    from __init__ import __version__, __doc__
+    logger.info(f'current version = {__version__}, doc = {__doc__}')
     
