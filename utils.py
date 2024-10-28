@@ -4163,3 +4163,62 @@ def show_system_info():
     from __init__ import __version__, __doc__
     logger.info(f'current version = {__version__}, doc = {__doc__}')
     
+def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
+    fn_count = f'{pwout}/intermediate/tts_down_50k.txt'
+    fno = f'{pwout}/intermediate/tts_down_50k_filtered.txt'
+    fn_active_gene = f'{pwout}/intermediate/active_gene.txt'
+    fno_change = f'{pwout}/intermediate/tts_down_50k_readthrough_change.txt'
+    # header = 
+    # Transcript	Gene	chr	strand	last_exon_len	last_exon_s	last_exon_e	last_exon_OmoMYC_1_rRNArm-F4q10	tts_down_50k_OmoMYC_1_rRNArm-F4q10	ratio_OmoMYC_1_rRNArm-F4q10
+    # target
+    # 1. filter out the protein-coding only
+    # 2. for each gene, only keep the active transcript
+    # 3. use cmhtest like the pindex change to get the pvalue and odds ratio
+    
+    with open(fn_active_gene) as f:
+        active_ts_set = {_.strip().split('\t')[0] for _ in f}
+    df = pd.read_csv(fn_count, sep='\t')
+    n_orig = len(df)
+    df_filter = df.loc[df['Transcript'].isin(active_ts_set)]
+    n_filter_active = len(df_filter)
+    logger.debug(f'original count = {n_orig}, after filter active = {n_filter_active}, drop = {n_orig - n_filter_active}')
+    
+    # keep protein coding only
+    # proteincoding info get from the ENSEMBL gtf file
+    if fn_protein_coding:
+        with open(fn_protein_coding) as f:
+            f.readline()
+            protein_coding_set = {_.split('\t', 1)[0] for _ in f}
+        df_filter = df_filter.loc[df_filter['Gene'].isin(protein_coding_set)]
+        n_filter_protein_coding = len(df_filter)
+        logger.debug(f'after filter protein coding = {n_filter_protein_coding}, drop = {n_filter_active - n_filter_protein_coding}')
+    else:
+        logger.warning(f'No protein coding gene file provided, skip filtering protein coding genes')
+    
+    df_filter.to_csv(fno, sep='\t', na_rep='NA', index=False)
+    
+    # run the cmhtest like the pindex change
+    cols = list(df_filter.columns)
+    cols_last_exon = [_ for _ in cols if _.startswith('last_exon_')]
+    cols_down = [_ for _ in cols if _.startswith('tts_down_')]
+    
+    idx_last_exon = [cols.index(_) for _ in cols_last_exon]
+    idx_down = [cols.index(_) for _ in cols_down]
+    
+    df_out = df_filter.iloc[:, :7].copy()
+    n_sam = rep1 + rep2
+    if n_sam == 2:
+        # use fisher exact test
+        idx_le1, idx_le2 = idx_last_exon
+        idx_down1, idx_down2 = idx_down
+        df_out['pvalue'] = df_filter.apply(lambda x: get_pvalue_2_sample(x, idx_le1, idx_le2, idx_down1, idx_down2), axis=1)
+        df_out = add_FDR_col(df_out, 'pvalue')
+        
+        # add odds ratio
+        def get_odds_ratio(row):
+            le1, le2, down1, down2 = row[idx_le1], row[idx_le2], row[idx_down1], row[idx_down2]
+            tmp = le1 * down2
+            if all([le1, le2, down1, down2, tmp]):
+                return le2 * down1 / tmp
+        
+        
