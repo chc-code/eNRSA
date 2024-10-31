@@ -317,6 +317,11 @@ def main(args):
         with open(fn_count_pp_gb) as f:
             for _ in f:
                 line_count += 1
+
+    # logger.warning('modify here')
+    # fn_protein_coding = analysis.ref['protein_coding']
+    # filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2)
+    # sys.exit(1)
     
     if not (line_count > 10 and demo):
         logger.info(f'Getting pp_gb count')

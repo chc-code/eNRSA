@@ -4173,7 +4173,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
     fn_count = f'{pwout}/intermediate/tts_down_50k.txt'
     fno = f'{pwout}/intermediate/tts_down_50k_filtered.txt'
     fn_active_gene = f'{pwout}/intermediate/active_gene.txt'
-    fno_change = f'{pwout}/intermediate/tts_down_50k_readthrough_change.txt'
+    fno_change = f'{pwout}/known_gene/readthrough_change.txt'
     # header = 
     # Transcript	Gene	chr	strand	last_exon_len	last_exon_s	last_exon_e	last_exon_OmoMYC_1_rRNArm-F4q10	tts_down_50k_OmoMYC_1_rRNArm-F4q10	ratio_OmoMYC_1_rRNArm-F4q10
     # target
@@ -4185,7 +4185,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
         active_ts_set = {_.strip().split('\t')[0] for _ in f}
     df = pd.read_csv(fn_count, sep='\t')
     n_orig = len(df)
-    df_filter = df.loc[df['Transcript'].isin(active_ts_set)]
+    df_filter = df.loc[df['Transcript'].isin(active_ts_set)].copy()
     n_filter_active = len(df_filter)
     logger.debug(f'original count = {n_orig}, after filter active = {n_filter_active}, drop = {n_orig - n_filter_active}')
     
@@ -4208,7 +4208,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
     idx_last_exon = [i for i, _ in enumerate(cols) if _.startswith('last_exon_') and i >= n_info_cols]
     idx_down = [i for i, _ in enumerate(cols) if _.startswith('tts_down_')]
         
-    df_out = df_filter.iloc[:, :n_info_cols].copy()
+    # df_out = df_filter.iloc[:, :n_info_cols].copy()
     n_sam = rep1 + rep2
     
     if n_sam * 3 + n_info_cols != len(cols):
@@ -4241,8 +4241,8 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
         # use fisher exact test
         idx_le1, idx_le2 = idx_last_exon
         idx_down1, idx_down2 = idx_down
-        df_out['pvalue'] = df_filter.apply(lambda x: get_pvalue_2_sample(x, idx_le1, idx_le2, idx_down1, idx_down2), axis=1)
-        df_out = add_FDR_col(df_out, 'pvalue')
+        df_filter['pvalue'] = df_filter.apply(lambda x: get_pvalue_2_sample(x, idx_le1, idx_le2, idx_down1, idx_down2), axis=1)
+        df_filter = add_FDR_col(df_filter, 'pvalue')
         
         # add odds ratio
         def get_odds_ratio(row):
@@ -4258,12 +4258,17 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
             e = traceback.format_exc()
             logger.error(e)
             sys.exit(1)
-        df_out['log2fc'] = log2fc
+        df_filter['log2fc'] = log2fc
     else:
         # run cmhtest
-        df_out[['log2fc', 'pvalue']] = df_filter.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
-        df_out = add_FDR_col(df_out, 'pvalue')
+        df_filter[['log2fc', 'pvalue']] = df_filter.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
+        df_filter = add_FDR_col(df_filter, 'pvalue')
         
-    df_out = df_out.sort_values('FDR')
-    df_out.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
-    logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(df_out)}, cols = {list(df_out.columns)}')
+    df_filter = df_filter.sort_values('FDR')
+    
+    # reorder the columns, move log3fc, pvalue, FDR before the samples data
+    cols_new = cols[:n_info_cols] + ['log2fc', 'pvalue', 'FDR'] + cols[n_info_cols:]
+    df_filter = df_filter[cols_new]
+    
+    df_filter.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
+    logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(df_filter)}, cols = {list(df_filter.columns)}')
