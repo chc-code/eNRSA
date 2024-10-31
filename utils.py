@@ -310,6 +310,9 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
     fn_gtf_exp_write = f'{pw_code_write}/ref/{organism}/RefSeq-{organism}.gtf'
     fn_fa_exp_write = f'{pw_code_write}/fa/{organism}/{organism}.fa'
     
+    fn_protein_coding = f'{pw_code}/ref/{organism}/{organism}.protein_coding.txt'
+    fn_protein_coding_write = f'{pw_code_write}/ref/{organism}/{organism}.protein_coding.txt'
+    
     if fn_fa and not os.path.exists(fn_fa_exp_write):
         os.makedirs(os.path.dirname(fn_fa_exp_write), exist_ok=True)
         try:
@@ -347,10 +350,10 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
 
         ref_files['gtf'] = fn_gtf
         ref_files['fa'] = fn_fa
-        
+        ref_files['protein_coding'] = None
     else:
         # get the gtf and fa file of known genome
-        for k, flist in [['gtf', [fn_gtf, fn_gtf_exp, fn_gtf_exp_write]], ['fa', [fn_fa, fn_fa_exp, fn_fa_exp_write]]]:
+        for k, flist in [['gtf', [fn_gtf, fn_gtf_exp, fn_gtf_exp_write]], ['fa', [fn_fa, fn_fa_exp, fn_fa_exp_write]], ['protein_coding', [fn_protein_coding, fn_protein_coding_write]]]:
             found = 0
             for fn in flist:
                 if fn is None:
@@ -1751,7 +1754,8 @@ def get_pvalue_2_sample(row, idx_ppc1, idx_ppc2, idx_gbc1, idx_gbc2):
 
 def add_FDR_col(df, col_pvalue, col_FDR='FDR'):
     df = df.reset_index(drop=True)
-    pvals = df[col_pvalue].replace('NA', np.nan).dropna()
+    pd.set_option('future.no_silent_downcasting', True)
+    pvals = df[col_pvalue].replace('NA', np.nan).astype(float).dropna()
     fdr = multipletests(pvals, method='fdr_bh')[1]
     # if 'Ctrl_max_count' in df.columns:
     #     logger.warning(f'df shape= {df.shape}, pvals shape = {pvals.shape}, fdr = {len(fdr)}')
@@ -3250,7 +3254,6 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
         for ts, v in tts_down_50k_str.items():
             print('\t'.join(v), file=o)
 
-
     # save the tts_count
     if save_tts_count:
         fn_tts_count = f'{pwout}/intermediate/count_tts.raw.txt'
@@ -4202,12 +4205,9 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
     
     # run the cmhtest like the pindex change
     cols = list(df_filter.columns)
-    cols_last_exon = [_ for _ in cols if _.startswith('last_exon_')]
-    cols_down = [_ for _ in cols if _.startswith('tts_down_')]
-    
-    idx_last_exon = [cols.index(_) for _ in cols_last_exon]
-    idx_down = [cols.index(_) for _ in cols_down]
-    
+    idx_last_exon = [i for i, _ in enumerate(cols) if _.startswith('last_exon_') and i >= n_info_cols]
+    idx_down = [i for i, _ in enumerate(cols) if _.startswith('tts_down_')]
+        
     df_out = df_filter.iloc[:, :n_info_cols].copy()
     n_sam = rep1 + rep2
     
@@ -4223,7 +4223,14 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
             le1, down1 = row[idx_last_exon[i]], row[idx_down[i]]
             for j in range(rep2):
                 j += rep1
-                le2, down2 = row[idx_last_exon[j]], row[idx_down[j]]
+                try:
+                    le2, down2 = row[idx_last_exon[j]], row[idx_down[j]]
+                except:
+                    logger.info(list(enumerate(cols)))
+                    logger.info(f'row cols = {len(row)}, ncol_exp = {len(cols)}')
+                    
+                    logger.error(f'idx_last_exon = {idx_last_exon}, idx_down = {idx_down}, row = {row}, i = {i}, j = {j}')
+                    sys.exit(1)
                 if le1 + le2 + down1 + down2 > 0 and down2 * le1 > 0:
                     arr.append([[le2, down2], [le1, down1]])
         odds_ratio, pvalue = cmhtest(arr)
@@ -4254,9 +4261,9 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
         df_out['log2fc'] = log2fc
     else:
         # run cmhtest
-        data_out[['log2fc', 'pvalue']] = df_filter.iloc.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
-        data_out = add_FDR_col(data_out, 'pvalue')
+        df_out[['log2fc', 'pvalue']] = df_filter.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
+        df_out = add_FDR_col(df_out, 'pvalue')
         
-    data_out = data_out.sort_values('FDR')
-    data_out.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
-    logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(data_out)}, cols = {list(data_out.columns)}')
+    df_out = df_out.sort_values('FDR')
+    df_out.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
+    logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(df_out)}, cols = {list(df_out.columns)}')

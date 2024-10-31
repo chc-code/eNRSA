@@ -49,7 +49,7 @@ import traceback
 import gc
 sys.dont_write_bytecode = True
 
-from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info
+from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count
 
 from utils import Analysis, process_bed_files
 
@@ -322,6 +322,12 @@ def main(args):
         logger.info(f'Getting pp_gb count')
         pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count)
 
+        # filter and add FDR
+        if rep2 > 0:
+            logger.debug(f'filtering on TTS downstream readthrough table')
+            fn_protein_coding = analysis.ref['protein_coding']
+            filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2)
+        
         # close file handle
         for fn_lb, fn_bed in fls:
             analysis.out_fls['bed_peaks'][fn_lb]['fh'].close()
