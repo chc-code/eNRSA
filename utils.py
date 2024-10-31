@@ -3105,11 +3105,9 @@ def get_no_overlap_region_v2(gtf, func_get_target_region=None):
         if not overlap_found:
             no_overlap.add(ts)
     return no_overlap
-
-
-
-def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False):
     
+
+def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False):
     invalid_chr_transcript = 0
     bin_size = analysis.bin_size
     # ['ppc', 'ppm', 'ppd', 'pps', 'gbc', 'gbm', 'gbd', 'pauseIndex']
@@ -3142,9 +3140,8 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
             start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
             s1, e1 = (start, end + 50000) if strand == '+' else (start - 50000, end)
             return chr_, gn, s1, e1
-        ts_without_overlap_50k = get_no_overlap_region_v2(gtf_info, func_get_target_region=get_50k_down_tts_from_gene_info)
+        ts_without_overlap_50k = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_50k_down_tts_from_gene_info)
         logger.debug(f'transcript without overlap from TSS to 50kb downstream of TTS = {len(ts_without_overlap_50k)}')
-    
     
     # seq_pool = {} # key = transcript_id
     # count_pool = {}
@@ -3600,7 +3597,7 @@ def pause_longeRNA_main(args):
     else:
         reuse_pre_count = True
         logger.info(f'Getting pp_gb count')
-        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False, islongerna=True)
+        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, save_tts_count=False, islongerna=True)
         close_fh()
     
         # count_pp_gb

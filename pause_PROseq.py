@@ -262,11 +262,16 @@ def main(args):
 
     pro_up, pro_down, gb_down_distance, min_gene_len, tts_padding = [analysis.config[_] for _ in ['pro_up', 'pro_down', 'gb_start', 'min_gene_len', 'tts_padding']]
 
+    # prepare fasta file
+    fn_fa = analysis.ref['fa']
+    fa_idx = build_idx_for_fa(fn_fa)
+    fh_fa = open(fn_fa, 'r')
+
 
     # process the GTF file
     logger.info(f"Processing GTF file: {analysis.ref['gtf']}")
     gtf_info, fn_tss, fn_tss_tts, err = process_gtf(analysis.ref['gtf'], pwout=analysis.pwout)
-
+    gtf_info_raw = gtf_info
     err_total = sum(err.values())
     if err_total:
         logger.warning(f'Error encountered while processing GTF file')
@@ -275,55 +280,31 @@ def main(args):
     if len1 == 0:
         logger.error("No gene information found in the GTF file")
         sys.exit(1)
-
-
+        
     # filter out the genes with length less than the minimum gene length
     gtf_info_new = {}
-    if benchmode:
-        ct = 0
-        bench_max_gene = 3000
-        logger.info(f"Bench mode is on, only process the first {bench_max_gene} genes")
-
-    # prepare fasta file
-    fn_fa = analysis.ref['fa']
-    fa_idx = build_idx_for_fa(fn_fa)
-    fh_fa = open(fn_fa, 'r')
-
     short_genes = 0
+    merged_transcripts = 0
 
     tmp = sorted(gtf_info)
-    # for k, v in gtf_info.items():
-    merged_transcripts = 0
     skipped_ts = {'invalid_chr': 0,  'short': 0}
     # ts_prefix = {}
     for k in tmp:
         v = gtf_info[k]
-        if v['chr'] not in fa_idx:
+        if fa_idx and v['chr'] not in fa_idx:
             skipped_ts['invalid_chr'] += 1
             continue
-        # if k[0] != 'N' and k[:3] != 'ENS':
-        #     # unkown_transcript += 1
-        #     # unkown_transcript_list.append(k)
-        #     ts_prefix.setdefault(k[:3], 0)
-        #     ts_prefix[k[:3]] += 1
-        #     skipped_ts['invalid_ts_prefix'] += 1
-        #     continue
         if v['end'] - v['start'] + 1 > min_gene_len: # not include if len is 1000 (min_gene_len)
             merged_transcripts += k.count(';')
             gtf_info_new[k] = add_value_to_gtf(v, pro_up, pro_down, gb_down_distance, tts_padding) 
-            if benchmode:
-                ct += 1
-                if ct == bench_max_gene:
-                    break
         else:
             skipped_ts['short'] += 1
             short_genes += 1
     total_skipped = sum(skipped_ts.values())
     len1 = len(gtf_info_new)
     logger.debug(f'initial gtf dict = {len(gtf_info)}, total skipped = {total_skipped}, detail = {skipped_ts} merged transcript = {merged_transcripts}, total count before merge = {len1 + merged_transcripts}, current ts count = {len1}')
-    
-    
     gtf_info = gtf_info_new
+    
     fls = analysis.input_fls # element is [fn_lb, fn_bed]
     sam_order = [_[0] for _ in fls]
     n_gene_cols = analysis.n_gene_cols
@@ -339,7 +320,7 @@ def main(args):
     
     if not (line_count > 10 and demo):
         logger.info(f'Getting pp_gb count')
-        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count)
+        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count)
 
         # close file handle
         for fn_lb, fn_bed in fls:
