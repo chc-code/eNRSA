@@ -322,12 +322,6 @@ def main(args):
         logger.info(f'Getting pp_gb count')
         pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count)
 
-        # filter and add FDR
-        if rep2 > 0:
-            logger.debug(f'filtering on TTS downstream readthrough table')
-            fn_protein_coding = analysis.ref['protein_coding']
-            filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2)
-        
         # close file handle
         for fn_lb, fn_bed in fls:
             analysis.out_fls['bed_peaks'][fn_lb]['fh'].close()
@@ -478,7 +472,14 @@ def main(args):
     # logger.debug(vars(analysis))
     get_alternative_isoform_across_conditions(fn_count_pp_gb, pwout, pw_bed, rep1, rep2)
     get_alternative_isoform_across_conditions(fn_count_tts, pwout, pw_bed, rep1, rep2, tts_padding=tts_padding)
+
+        # filter and add FDR
+    if rep2 > 0:
+        logger.debug(f'filtering on TTS downstream readthrough table')
+        fn_protein_coding = analysis.ref['protein_coding']
+        filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2)
     
+
     
 if __name__ == "__main__":
     args = getargs()
