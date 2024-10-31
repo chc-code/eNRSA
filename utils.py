@@ -3055,53 +3055,55 @@ class Analysis:
         }
         
 
+def get_gtf_intervals(gtf):
+    intervals = {}
+    for ts, v in gtf.items():
+        chr_, start, end, strand, gene_name = v['chr'], v['start'], v['end'], v['strand'], v['gene_name']
+        intervals.setdefault(chr_, []).append((start, end, gene_name, ts))
+    for k, v in intervals.items():
+        intervals[k] = sorted(v, key=lambda x: x[0])
+    return intervals
 
-def get_tts_downstream_no_overlap_region(gtf):
-    overlap = {}
+def get_no_overlap_region_v2(gtf, func_get_target_region=None):
+    # this is the best solution, only takes 120us, compared to 4.7s using dummy nested iteration
+    # improved 40 times
+    # func_get_target_region, is the function that get the target regioin from the gene_info
+    #. e.g. get the downstream 50kb from TTS, 
+    # input  = gene_info
+    # return should be chr_, gn, s1, e1
     no_overlap = set()
-    intervals = {} # key is chr
-    for k, v in gtf.items():
-        try:
-            intervals.setdefault(v['chr'], []).append((v['start'], v['end'], v['gene_name']))
-        except:
-            logger.error(f'error in {k}, {v}')
-            sys.exit(1)
-    for tmp in intervals.values():
-        tmp.sort()
-    intervals_sort_end = {k: sorted(v, key=lambda x: x[1]) for k, v in intervals.items()}
+    intervals = get_gtf_intervals(gtf)
+    def get_cumu_max(intervals):
+        # get the max end site position
+        cumu_max = 0
+        res = []
+        for i in intervals:
+            if i[1] > cumu_max:
+                cumu_max = i[1]
+            res.append(cumu_max)
+        return res
     
-    for k, v in gtf.items():
-        tts = v['tts']
-        gn, chr_, strand = v['gene_name'], v['chr'], v['strand']
-        s1, e1 = (tts, tts + 50000) if v['strand'] == '+' else (tts - 50000, tts)
-        overlap_found = False
+    if func_get_target_region is None:
+        def func_get_target_region(gene_info):
+            start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
+            s1, e1 = (start, end + 50000) if strand == '+' else (start - 50000, end)
+            return chr_, gn, s1, e1
 
-        if strand == '+':
-            idx = bisect.bisect_left(intervals[chr_], (s1,))
-            search_range = range(idx, len(intervals[chr_]))
-            search_l = intervals[chr_]
-        else:
-            idx = bisect.bisect_right(intervals[chr_], (e1,))
-            search_range = range(idx, -1, -1)
-            search_l = intervals_sort_end[chr_]
-        
-        for i in search_range:
-            s2, e2, gn2 = search_l[i]
-            if strand == '+' and s2 > e1:
-                # print(f'break: {search_l[i]}')
-                break
-            elif strand == '-' and s1 > e2:
-                break
-            if gn2 == gn:
+    cumu_max = {k: get_cumu_max(v) for k, v in intervals.items()}
+    for ts, v in gtf.items():
+        chr_, gn, s1, e1 = func_get_target_region(v)
+        overlap_found = False
+        start_interval_idx = bisect.bisect_left(cumu_max[chr_], s1)
+        for i in intervals[chr_][start_interval_idx:]:
+            if i[2] == gn:
                 continue
-            if not (s1 > e2 or s2 > e1):
-                overlap.setdefault(gn, set()).add(gn2)
+            if i[0] > e1:
+                break
+            if s1 <= i[1]:
                 overlap_found = True
                 break
         if not overlap_found:
-            no_overlap.add(k)
-    
-    logger.debug(f'total = {len(gtf)}, no_overlap = {len(no_overlap)}')
+            no_overlap.add(ts)
     return no_overlap
 
 
@@ -3136,7 +3138,12 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
     if islongerna:
         ts_without_overlap_50k = set()
     else:
-        ts_without_overlap_50k = get_tts_downstream_no_overlap_region(gtf_info)
+        def get_50k_down_tts_from_gene_info(gene_info):
+            start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
+            s1, e1 = (start, end + 50000) if strand == '+' else (start - 50000, end)
+            return chr_, gn, s1, e1
+        ts_without_overlap_50k = get_no_overlap_region_v2(gtf_info, func_get_target_region=get_50k_down_tts_from_gene_info)
+        logger.debug(f'transcript without overlap from TSS to 50kb downstream of TTS = {len(ts_without_overlap_50k)}')
     
     
     # seq_pool = {} # key = transcript_id
@@ -3185,7 +3192,6 @@ def process_bed_files(analysis, fls, gtf_info, fa_idx, fh_fa, reuse_pre_count=Fa
             for transcript_id in ts_list_chr:
                 gene_info = gtf_info[transcript_id]
                 chr_, strand, gene_raw_s, pp_start, pp_end, gb_start, gb_end, strand_idx, gb_len_mappable, gene_seq, tts_start, tts_end, tts_down_region_s, tts_down_region_e = [gene_info[_] for _ in ['chr', 'strand', 'start', 'pp_start', 'pp_end', 'gb_start', 'gb_end', 'strand_idx', 'gb_len_mappable', 'gene_seq', 'tts_start', 'tts_end', 'tts_down_region_s', 'tts_down_region_e']]
-                
 
                 n += 1
                 if n % section_size == 0:
@@ -4174,7 +4180,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
     # 1. filter out the protein-coding only
     # 2. for each gene, only keep the active transcript
     # 3. use cmhtest like the pindex change to get the pvalue and odds ratio
-    
+    n_info_cols = 7  # first 7 columns are the reference columns
     with open(fn_active_gene) as f:
         active_ts_set = {_.strip().split('\t')[0] for _ in f}
     df = pd.read_csv(fn_count, sep='\t')
@@ -4205,8 +4211,28 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
     idx_last_exon = [cols.index(_) for _ in cols_last_exon]
     idx_down = [cols.index(_) for _ in cols_down]
     
-    df_out = df_filter.iloc[:, :7].copy()
+    df_out = df_filter.iloc[:, :n_info_cols].copy()
     n_sam = rep1 + rep2
+    
+    if n_sam * 3 + n_info_cols != len(cols):
+        logger.error(f'invalid number of columns, expect {n_sam * 3 + n_info_cols}, got {len(cols)}')
+        return 1
+    
+    def cmhtest_for_readthrough(row):
+        arr = []
+        row = list(row)
+        # there should be 3 * n_sam columns
+        for i in range(rep1):
+            le1, down1 = row[idx_last_exon[i]], row[idx_down[i]]
+            for j in range(rep2):
+                j += rep1
+                le2, down2 = row[idx_last_exon[j]], row[idx_down[j]]
+                if le1 + le2 + down1 + down2 > 0 and down2 * le1 > 0:
+                    arr.append([[le2, down2], [le1, down1]])
+        odds_ratio, pvalue = cmhtest(arr)
+        return np.log2(odds_ratio) if odds_ratio != 'NA' else 'NA', pvalue
+    
+    
     if n_sam == 2:
         # use fisher exact test
         idx_le1, idx_le2 = idx_last_exon
@@ -4221,4 +4247,19 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
             if all([le1, le2, down1, down2, tmp]):
                 return le2 * down1 / tmp
         
+        # get the log2fc
+        try:
+            log2fc = df_filter.apply(lambda x: np.log2(get_odds_ratio(x)), axis=1)
+        except:
+            e = traceback.format_exc()
+            logger.error(e)
+            sys.exit(1)
+        df_out['log2fc'] = log2fc
+    else:
+        # run cmhtest
+        data_out[['log2fc', 'pvalue']] = df_filter.iloc.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
+        data_out = add_FDR_col(data_out, 'pvalue')
         
+    data_out = data_out.sort_values('FDR')
+    data_out.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
+    logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(data_out)}, cols = {list(data_out.columns)}')
