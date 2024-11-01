@@ -7,7 +7,15 @@ import os, sys, re
 import pickle, json, gzip
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+# tmp = os.path.realpath(__file__)
+# for i in range(3):
+#     tmp = os.path.dirname(tmp)
+#     print(f'{i} - {tmp}')
+
+# print(sys.path)
 from nrsa.utils import process_gtf
+import logging
 
 def getlogger(fn_log=None, logger_name=None, nocolor=False):
     import logging
@@ -85,7 +93,6 @@ def getlogger(fn_log=None, logger_name=None, nocolor=False):
         logger.addHandler(fh_file)
     return logger
 logger = getlogger(logger_name='NRSA')
-
 def updatelogger(logger, fn_log=None, terminal_level=None):
     handlers = list(logger.handlers)
     handler_name_d = {v.name: idx for idx, v in enumerate(handlers)}
