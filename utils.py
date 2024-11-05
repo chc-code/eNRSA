@@ -1871,7 +1871,7 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
     # logger.info(f'pindex_change done : {ana_type}')
     # logger.info(data_out.head())
 
-def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=50_000, islongerna=False):
+def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=5000, islongerna=False):
     strand = gene_info['strand']
     gene_raw_s, gene_raw_e = gene_info['start'], gene_info['end']
     if not islongerna:
@@ -3068,7 +3068,74 @@ def get_gtf_intervals(gtf):
         intervals[k] = sorted(v, key=lambda x: x[0])
     return intervals
 
-def get_no_overlap_region_v2(gtf, func_get_target_region=None):
+
+def get_closest_downstream_gene(gtf, intervals, cumu_max, ts):
+    # intervals = get_gtf_intervals(gtf)
+    v = gtf[ts]
+    chr_, start, end, strand, gene_name = v['chr'], v['start'], v['end'], v['strand'], v['gene_name']
+    intervals_chr = intervals[chr_]
+    cumu_max_chr = cumu_max[chr_]
+    n_ts = len(intervals_chr)
+    idx_left = bisect.bisect_left(cumu_max_chr, start)
+    if strand == '+':
+        for i in intervals_chr[idx_left:]:
+            if i[2] != gene_name and i[1] > start:
+                distance = i[0] - end
+                return [*i, distance]
+    else:
+        idx = bisect.bisect_right(intervals_chr, (end,))
+        if idx >= n_ts:
+            idx = n_ts - 1
+        min_distance = 1e9
+        min_i = None
+        n_cumu = len(cumu_max_chr)
+        for i in intervals_chr[idx:0:-1]:
+            try:
+                i[2] != gene_name  and cumu_max_chr[idx] == i[1] and i[1] <= start
+            except:
+                print(f'ERROR, {ts} - {v} - n_cumu  = {n_cumu}, idx = {idx}, n_intervals = {len(intervals_chr)} - {i}')
+            if i[2] != gene_name  and cumu_max_chr[idx] == i[1] and i[1] <= start:
+                distance = start - i[1]
+                if distance < min_distance:
+                    min_distance = distance
+                    min_i = i
+                break
+            if i[2] != gene_name and i[0] < end:
+                distance = start - i[1]
+                if distance < min_distance:
+                    min_distance = distance
+                    min_i = i
+        if min_i is None:
+            return [None, None, None, None, 1e-6]
+        return [*min_i, min_distance]
+
+
+def demofunc():
+    tmp = d.apply(lambda row: get_closest_downstream_gene(gtf, intervals, cumu_max, row['Transcript']), axis=1, result_type='expand')
+    tmp = tmp[[2,3, 4]]
+    tmp.columns = ['closest_ts', 'closest_gene', 'closest_distance']
+    d1 = pd.concat([d, tmp], axis=1)
+    tmp1 = set(d1.loc[d1.closest_distance > 50000, 'Transcript'])
+    tmp1_only = tmp1 - no1
+    no_only = no1  - tmp1
+
+
+def get_overlap_region_per_ts(ts):
+    v = gtf[ts]
+    chr_, gn, s1, e1 = func_get_target_region(v)
+    overlap_found = False
+    start_interval_idx = bisect.bisect_left(cumu_max[chr_], s1)
+    for i in intervals[chr_][start_interval_idx:]:
+        if i[2] == gn:
+            continue
+        if i[0] > e1:
+            break
+        if s1 <= i[1]:
+            print(f'overlap found for {ts} with {i}')
+            overlap_found = True
+            break
+
+def get_no_overlap_region_v2(gtf, func_get_target_region):
     # this is the best solution, only takes 120us, compared to 4.7s using dummy nested iteration
     # improved 40 times
     # func_get_target_region, is the function that get the target regioin from the gene_info
@@ -3086,13 +3153,6 @@ def get_no_overlap_region_v2(gtf, func_get_target_region=None):
                 cumu_max = i[1]
             res.append(cumu_max)
         return res
-    
-    if func_get_target_region is None:
-        def func_get_target_region(gene_info):
-            start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
-            s1, e1 = (start, end + 50000) if strand == '+' else (start - 50000, end)
-            return chr_, gn, s1, e1
-
     cumu_max = {k: get_cumu_max(v) for k, v in intervals.items()}
     for ts, v in gtf.items():
         chr_, gn, s1, e1 = func_get_target_region(v)
@@ -3111,7 +3171,7 @@ def get_no_overlap_region_v2(gtf, func_get_target_region=None):
     return no_overlap
     
 
-def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False):
+def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=False, save_tts_count=True, islongerna=False, downstream_no_overlap_length=50000):
     invalid_chr_transcript = 0
     bin_size = analysis.bin_size
     # ['ppc', 'ppm', 'ppd', 'pps', 'gbc', 'gbm', 'gbd', 'pauseIndex']
@@ -3131,21 +3191,27 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
     pp_str = {ts: [] for ts in ts_list}
     gb_str = {ts: [] for ts in ts_list}
     tts_str = {ts: [str(gtf_info[ts][_]) for _ in ['chr', 'strand', 'tts']] for ts in ts_list}
-    tts_down_50k_str = {}
+    tts_down_str = {}
+    downstream_no_overlap_length_str = f'{downstream_no_overlap_length/1000:.0f}k'
+    
     # reformat the gtf_info by chrom
     gtf_info_new = {}  # k1 = chr, k2 = ts
     for ts, v in gtf_info.items():
         chr_ = v['chr']
         gtf_info_new.setdefault(chr_, {})[ts] = v
     if islongerna:
-        ts_without_overlap_50k = set()
+        ts_without_overlap = set()
     else:
-        def get_50k_down_tts_from_gene_info(gene_info):
+        def get_down_tts_from_gene_info(gene_info):
             start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
-            s1, e1 = (start, end + 50000) if strand == '+' else (start - 50000, end)
+            s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
             return chr_, gn, s1, e1
-        ts_without_overlap_50k = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_50k_down_tts_from_gene_info)
-        logger.debug(f'transcript without overlap from TSS to 50kb downstream of TTS = {len(ts_without_overlap_50k)}')
+        ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
+        logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
+    
+    logger.warning(f'modify here, now will get the {downstream_no_overlap_length_str} downstream count for all transcripts')
+    invlude_all_ts = True
+    
     
     # seq_pool = {} # key = transcript_id
     # count_pool = {}
@@ -3207,16 +3273,15 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
                 s = time.time()
                 gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
                 # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
-                # get the count for last exon and the downstream 50kb region
-                if transcript_id in ts_without_overlap_50k:
+                # get the count for last exon and the downstream region
+                if invlude_all_ts or transcript_id in ts_without_overlap:
                     last_exon_s, last_exon_e = gene_info['last_exon']
                     last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
-                    tts_down_50k_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, tts_down_region_s, tts_down_region_e, bin_size)
+                    tts_down_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, tts_down_region_s, tts_down_region_e, bin_size)
                     last_exon_len = last_exon_e - last_exon_s + 1
-                    if transcript_id not in tts_down_50k_str:
-                        tts_down_50k_str[transcript_id] = [transcript_id, gene_info['gene_name'], chr_, strand, str(last_exon_len), str(last_exon_s), str(last_exon_e)]
-                    tts_down_50k_str[transcript_id] += [str(last_exon_ct), str(tts_down_50k_ct), f'{tts_down_50k_ct / last_exon_ct:.4f}' if last_exon_ct > 0 else 'NA']
-                
+                    if transcript_id not in tts_down_str:
+                        tts_down_str[transcript_id] = [transcript_id, gene_info['gene_name'], chr_, strand, str(last_exon_len), str(last_exon_s), str(last_exon_e)]
+                    tts_down_str[transcript_id] += [str(last_exon_ct), str(tts_down_ct), f'{tts_down_ct / last_exon_ct:.4f}' if last_exon_ct > 0 else 'NA']
 
                 pp_str[transcript_id].append(str(pp_res['ppc']))
                 gb_str[transcript_id] += [str(gbc), str(gbd)]
@@ -3245,13 +3310,14 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
 
 
     # save tts down 50k results
-    fn_tts_50k_down = f'{pwout}/intermediate/tts_down_50k.txt'
-    with open(fn_tts_50k_down, 'w') as o:
+    fn_tts_down = f'{pwout}/intermediate/tts_down_{downstream_no_overlap_length_str}.txt'
+    logger.info(f'number of transcripts {downstream_no_overlap_length_str} downstream region to file = {len(tts_down_str)}, ts_without_overlap_{downstream_no_overlap_length_str}={len(ts_without_overlap)}')
+    with open(fn_tts_down, 'w') as o:
         header = ['Transcript', 'Gene', 'chr', 'strand', 'last_exon_len', 'last_exon_s', 'last_exon_e']
         for fn_lb, _ in fls:
-            header += [f'last_exon_{fn_lb}', f'tts_down_50k_{fn_lb}', f'ratio_{fn_lb}']
+            header += [f'last_exon_{fn_lb}', f'tts_down_{downstream_no_overlap_length_str}_{fn_lb}', f'ratio_{fn_lb}']
         print('\t'.join(header), file=o)
-        for ts, v in tts_down_50k_str.items():
+        for ts, v in tts_down_str.items():
             print('\t'.join(v), file=o)
 
     # save the tts_count
@@ -3369,17 +3435,17 @@ def parse_design_table(args):
         with open(args.design_table) as f:
             batch_map = {}
             for line in f:
-                if line.startswith('#'):
+                if line.startswith('#') or not line.strip():
                     continue
                 if line.startswith('@@'):
-                    tmp = line[2:].strip().split('\t')
+                    tmp = re.split(r'\s+', line[2:].strip())
                     if len(tmp) != 2:
                         logger.error(f"Invalid comparison definition: {line}, should have 2 columns, col1 = case group, col2 = control group")
                         sys.exit(1)
                     comparison.append(tmp)
                     groups_in_comparison |= set(tmp)
                 else:
-                    tmp = line.strip().split('\t')
+                    tmp = re.split(r'\s+', line.strip())
                     if len(tmp) not in {2, 3}:
                         logger.error(f"Invalid line: {line}, should have 2 or 3 columns, col1 = file path, col2 = group name, col3 = optional, the batch of this sample")
                         err = 1
@@ -3401,7 +3467,7 @@ def parse_design_table(args):
                 sys.exit(1)
             group_not_defined = groups_in_comparison - set(group_info)
             if group_not_defined:
-                logger.error(f"Groups in comparison not defined in the sample section: {sorted(group_not_defined)}, quit now")
+                logger.error(f"Groups in comparison not defined in the sample section: {sorted(group_not_defined)}, groups defined in sample = {sorted(group_info)} quit now")
                 sys.exit(1)
             
             # if no comparison defined, process each group separately
@@ -4169,9 +4235,10 @@ def show_system_info():
     from __init__ import __version__, __doc__
     logger.info(f'current version = {__version__}, doc = {__doc__}')
     
-def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
-    fn_count = f'{pwout}/intermediate/tts_down_50k.txt'
-    fno = f'{pwout}/intermediate/tts_down_50k_filtered.txt'
+def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream_no_overlap_length, gtf_info_raw):
+    downstream_no_overlap_length_str = f'{downstream_no_overlap_length/1000:.0f}k'
+    fn_count = f'{pwout}/intermediate/tts_down_{downstream_no_overlap_length_str}.txt'
+    fno = f'{pwout}/intermediate/tts_down_{downstream_no_overlap_length_str}_filtered.txt'
     fn_active_gene = f'{pwout}/intermediate/active_gene.txt'
     fno_change = f'{pwout}/known_gene/readthrough_change.txt'
     # header = 
@@ -4200,6 +4267,16 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2):
         logger.debug(f'after filter protein coding = {n_filter_protein_coding}, drop = {n_filter_active - n_filter_protein_coding}')
     else:
         logger.warning(f'No protein coding gene file provided, skip filtering protein coding genes')
+
+    def get_down_tts_from_gene_info(gene_info):
+        start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
+        s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
+        return chr_, gn, s1, e1
+    ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
+    logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
+    df_filter = df_filter.loc[df_filter['Transcript'].isin(ts_without_overlap)]
+    n_filter_overlap_genes = len(df_filter)
+    logger.warning(f'after filter downstream overlap genes = {n_filter_overlap_genes}, drop = {n_filter_protein_coding - n_filter_overlap_genes}')
     
     df_filter.to_csv(fno, sep='\t', na_rep='NA', index=False)
     

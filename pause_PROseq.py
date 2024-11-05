@@ -33,6 +33,7 @@ def getargs():
     ps.add_argument('-ignore', help="""ignore the existing pre-counting results""", action='store_true')
     ps.add_argument('-sorted', help="""the input bed files are sorted, skip the sorting step""", action='store_true')
     # ps.add_argument('-testfunc', help="""test the new functions,debug mode""", action='store_true')
+    ps.add_argument('-tts_down', help="""TTS downstream length for detecting readthrough""", type=int, default=50000)
     args = ps.parse_args()
     
     return args
@@ -325,7 +326,9 @@ def main(args):
     
     if not (line_count > 10 and demo):
         logger.info(f'Getting pp_gb count')
-        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count)
+        tts_down = args.tts_down
+        logger.info(f'TTS downstream length for detecting readthrough = {tts_down/1000} k')
+        pp_str, gb_str = process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reuse_pre_count=reuse_pre_count, downstream_no_overlap_length=tts_down)
 
         # close file handle
         for fn_lb, fn_bed in fls:
@@ -481,8 +484,9 @@ def main(args):
         # filter and add FDR
     if rep2 > 0:
         logger.debug(f'filtering on TTS downstream readthrough table')
+        downstream_no_overlap_length = args.tts_down
         fn_protein_coding = analysis.ref['protein_coding']
-        filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2)
+        filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream_no_overlap_length, gtf_info_raw)
     
 
     
