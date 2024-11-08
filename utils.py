@@ -3110,30 +3110,6 @@ def get_closest_downstream_gene(gtf, intervals, cumu_max, ts):
         return [*min_i, min_distance]
 
 
-def demofunc():
-    tmp = d.apply(lambda row: get_closest_downstream_gene(gtf, intervals, cumu_max, row['Transcript']), axis=1, result_type='expand')
-    tmp = tmp[[2,3, 4]]
-    tmp.columns = ['closest_ts', 'closest_gene', 'closest_distance']
-    d1 = pd.concat([d, tmp], axis=1)
-    tmp1 = set(d1.loc[d1.closest_distance > 50000, 'Transcript'])
-    tmp1_only = tmp1 - no1
-    no_only = no1  - tmp1
-
-
-def get_overlap_region_per_ts(ts):
-    v = gtf[ts]
-    chr_, gn, s1, e1 = func_get_target_region(v)
-    overlap_found = False
-    start_interval_idx = bisect.bisect_left(cumu_max[chr_], s1)
-    for i in intervals[chr_][start_interval_idx:]:
-        if i[2] == gn:
-            continue
-        if i[0] > e1:
-            break
-        if s1 <= i[1]:
-            print(f'overlap found for {ts} with {i}')
-            overlap_found = True
-            break
 
 def get_no_overlap_region_v2(gtf, func_get_target_region):
     # this is the best solution, only takes 120us, compared to 4.7s using dummy nested iteration
@@ -3158,6 +3134,7 @@ def get_no_overlap_region_v2(gtf, func_get_target_region):
         chr_, gn, s1, e1 = func_get_target_region(v)
         overlap_found = False
         start_interval_idx = bisect.bisect_left(cumu_max[chr_], s1)
+        start_interval_idx = bisect.bisect_left(cumu_max[chr_], cumu_max[chr_][start_interval_idx -1 if start_interval_idx > 0 else 0])
         for i in intervals[chr_][start_interval_idx:]:
             if i[2] == gn:
                 continue
@@ -3196,6 +3173,8 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
     
     # reformat the gtf_info by chrom
     gtf_info_new = {}  # k1 = chr, k2 = ts
+    
+    invlude_all_ts = True
     for ts, v in gtf_info.items():
         chr_ = v['chr']
         gtf_info_new.setdefault(chr_, {})[ts] = v
@@ -3206,11 +3185,13 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
             start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
             s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
             return chr_, gn, s1, e1
-        ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
-        logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
+        if not invlude_all_ts:
+            ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
+            logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
+        else:
+            ts_without_overlap = set()
     
     logger.warning(f'modify here, now will get the {downstream_no_overlap_length_str} downstream count for all transcripts')
-    invlude_all_ts = True
     
     
     # seq_pool = {} # key = transcript_id
