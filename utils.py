@@ -363,6 +363,8 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
                     found = 1
                     break
             if not found:
+                tmp = [(fn, os.path.exists(fn)) for fn in flist]
+                logger.debug(f'{k} not found: {flist} - {tmp}')
                 need_download[k] = flist[1]
         
     ref_files["fantom"], ref_files['association'] = {
@@ -447,7 +449,8 @@ def download_file_task(url, save_path, md5_exp=None):
             if md5_actual != md5_exp:
                 logger.error(f"MD5 not match: {save_path}, expected = {md5_exp}, actual = {md5_actual}")
                 return 1
-        logger.info(f"File downloaded successfully and saved to {save_path}")
+        file_size = os.path.getsize(save_path)
+        logger.info(f"File downloaded successfully and saved to {save_path}, size = {file_size/1024/1024}MB")
         return 0
     except:
         e = traceback.format_exc()
@@ -466,7 +469,7 @@ def download_ref_files(organism, need_download, ref_files):
     err = 0
     
     url_md5sum = f'{url_base}/files_md5sum.json'
-    if not os.access(pw_code, os.W_OK):
+    if not os.access(pw_code, os.W_OK) or pw_code.startswith('/app/nrsa'):
         logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to $HOME/.nrsa')
         home = os.path.expanduser("~")
         pw_code_write = f'{home}/.nrsa'
@@ -2165,7 +2168,7 @@ def run_shell(cmd, echo=False, ret_info=False):
     retcode = p.returncode
     if ret_info:
         echo = False
-    if retcode and echo:
+    if retcode:
         logger.error(f"Error running command: {cmd}")
         logger.error(f"stdout: {stdout.decode()}")
         logger.error(f"stderr: {stderr.decode()}")
@@ -2411,7 +2414,8 @@ def process_input(pwout_raw, fls, respect_sorted=False):
         
         fn_for_check = re.sub(r'\.gz$', '', fn)
         if fn_for_check.endswith('.bam'):
-            logger.info(f'Converting bam to bed: {fn}')
+            file_size = os.path.getsize(fn) / 1024 / 1024/1024 # GB
+            logger.info(f'Converting bam to bed: {fn}, bam file size = {file_size:.1f} GB')
             # still need to do the sorting, because for the following steps using bedtools coverage, the sorted bed will be more memory efficient
             # bedtools sort is faster than linux sort
             cmd = f"""bedtools bamtobed -i {fn} |bedtools sort -i - > {fn_out_bed}"""
@@ -3204,6 +3208,7 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
     # prev_peak_pool = {}
     # genes_with_N = set()
     n_ts_init = len(ts_list)
+    err = 0
     for fn_lb, fn_bed in fls:
         logger.info(f'processing {fn_lb}')
         fh_bed_peaks = analysis.out_fls['bed_peaks'][fn_lb]['fh']
@@ -3233,6 +3238,16 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
             logger.info(f'{ts_excluded} transcripts in GTF file excluded due to chromosome not exist in bed file')
             logger.debug(f'excluded chr = {chr_excluded}')
         logger.debug(f'init ts list = {n_ts_init}, current = {n_ts_init - ts_excluded}, drop = {ts_excluded}')
+
+        n_current = n_ts_init - ts_excluded
+        if n_current == 0:
+            size = os.path.getsize(fn_bed)
+            if size < 100:
+                logger.error(f'the input bed file is empty, skip')
+                err = 1
+            else:
+                logger.error(f'no transcript left after matching chrom between gtf and bed file, maybe because of different chrom name pattern, skip')
+                err = 1
 
         for chr_, ts_list_chr in gtf_info_new.items():
             fn_count_per_base, fn_count_bin = pre_count_flist[chr_]
@@ -3287,7 +3302,9 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
             del count_per_base
             del count_bin 
             gc.collect()
-            
+    
+    if err:
+        sys.exit(1)
     if fail_to_retrieve_seq:
         logger.warning(f'failed to retrieve sequence for {fail_to_retrieve_seq} genes')
 
@@ -4222,7 +4239,7 @@ def show_system_info():
         # show python path for executing this script
         logger.debug(f'python path = {sys.executable}')
         logger.info(f'utils path = {__file__}')
-        logger.info(f'current working directory = {os.getcwd()}')
+        logger.debug(f'current working directory = {os.getcwd()}')
         from __init__ import __version__, __doc__
         logger.info(f'current version = {__version__}, doc = {__doc__}')
     except:
@@ -4342,3 +4359,20 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     
     df_filter.to_csv(fno_change, sep='\t', na_rep='NA', index=False)
     logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(df_filter)}, cols = {list(df_filter.columns)}')
+
+def test_writable(pw):
+    fntest = f'{pw}/test_writable.tmp'
+    exp_content = 'test1234'
+    try:
+        with open(fntest, 'w') as f:
+            f.write(exp_content)
+    except:
+        logger.error(f'fail to write to {pw}, please check the permission')
+        return 1
+    with open(fntest) as f:
+        readin_content = f.read().strip()
+        if readin_content != exp_content:
+            logger.error(f'fail to write to {pw}, please check the permission')
+            return 1
+    os.remove(fntest)
+    return 0

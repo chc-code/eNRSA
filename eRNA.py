@@ -160,7 +160,7 @@ def updatelogger(logger, fn_log, terminal_level=None):
 logger = getlogger(logger_name='NRSA')
 
 
-from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink
+from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable
 
 
 def main(args):
@@ -174,6 +174,13 @@ def main(args):
     # lk (pp, gb, pindex), dir (1, -1, 0), wt (weight), fdr (cutoff)
     pwout = args.pwout
     pwout = os.path.realpath(pwout)
+    # test writtable
+    writable = test_writable(pwout)
+    if not writable:
+        logger.error(f"Output directory is not writable: {pwout}")
+        sys.exit(1)
+    
+
     fn_gtf = args.gtf
     fn_fa = args.fa
     pwout_raw = args_d.get('pwout_raw', pwout)
