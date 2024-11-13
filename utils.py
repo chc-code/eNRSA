@@ -4361,6 +4361,11 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     logger.debug(f'filter readthrough done, output = {fno_change}, nrow = {len(df_filter)}, cols = {list(df_filter.columns)}')
 
 def test_writable(pw):
+    try:
+        os.makedirs(pw, exist_ok=True)
+    except:
+        logger.error(f'fail to create {pw}, please check the permission')
+        return 1
     fntest = f'{pw}/test_writable.tmp'
     exp_content = 'test1234'
     try:
@@ -4368,11 +4373,13 @@ def test_writable(pw):
             f.write(exp_content)
     except:
         logger.error(f'fail to write to {pw}, please check the permission')
+        logger.debug(f'fail to create a file to {fntest}')
         return 1
     with open(fntest) as f:
         readin_content = f.read().strip()
         if readin_content != exp_content:
             logger.error(f'fail to write to {pw}, please check the permission')
+            logger.debug(f'exp and actual read in count are different, exp  = {exp_content}, actual = {readin_content}')
             return 1
     os.remove(fntest)
     return 0
