@@ -1871,7 +1871,7 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
     # logger.info(f'pindex_change done : {ana_type}')
     # logger.info(data_out.head())
 
-def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=50_000, islongerna=False):
+def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=5000, islongerna=False):
     strand = gene_info['strand']
     gene_raw_s, gene_raw_e = gene_info['start'], gene_info['end']
     if not islongerna:
@@ -3115,6 +3115,7 @@ def get_closest_downstream_gene(gtf, intervals, cumu_max, ts):
         return [*min_i, min_distance]
 
 
+
 def get_no_overlap_region_v2(gtf, func_get_target_region):
     # this is the best solution, only takes 120us, compared to 4.7s using dummy nested iteration
     # improved 40 times
@@ -3139,7 +3140,6 @@ def get_no_overlap_region_v2(gtf, func_get_target_region):
         overlap_found = False
         start_interval_idx = bisect.bisect_left(cumu_max[chr_], s1)
         start_interval_idx = bisect.bisect_left(cumu_max[chr_], cumu_max[chr_][start_interval_idx -1 if start_interval_idx > 0 else 0])
-
         for i in intervals[chr_][start_interval_idx:]:
             if i[2] == gn:
                 continue
@@ -4270,7 +4270,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     df_filter = df_filter.loc[df_filter['Transcript'].isin(ts_without_overlap)]
     n_filter_overlap_genes = len(df_filter)
     logger.warning(f'after filter downstream overlap genes = {n_filter_overlap_genes}, drop = {n_filter_protein_coding - n_filter_overlap_genes}')
-
+    
     df_filter.to_csv(fno, sep='\t', na_rep='NA', index=False)
     
     # run the cmhtest like the pindex change

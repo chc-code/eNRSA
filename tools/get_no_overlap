@@ -1,0 +1,204 @@
+#! /usr/bin/env python3
+"""
+get the no overlap regions from any defined region, against the all GTF gene regions
+"""
+import re, os, pickle, json, sys
+import sys
+from bisect import bisect_left as bl, bisect_right as br
+
+def getlogger(fn_log=None, logger_name=None, nocolor=False):
+    import logging
+    logger_name = logger_name or "main"
+    
+    try:
+        logger = logging.getLogger(logger_name)
+    except:
+        logger = logging.getLogger('terminal')
+
+    class CustomFormatter(logging.Formatter):
+    
+        def __init__(self, nocolor=False):
+            self.nocolor = nocolor
+        colors = {
+            'black': '\u001b[30;1m',
+            'red': '\u001b[31;1m',
+            'r': '\u001b[31;1m',
+            'bold_red': '\u001b[31;1m',
+            'rb': '\u001b[31;1m',
+            'green': '\u001b[32;1m',
+            'g': '\u001b[32;1m',
+            'gb': '\u001b[32;1m',
+            'yellow': '\u001b[33;1m',
+            'blue': '\u001b[34;1m',
+            'b': '\u001b[34;1m',
+            'purple': '\u001b[35;1m',
+            'p': '\u001b[35;1m',
+            'grey': '\u001b[38;1m',
+        }
+        FORMATS = {
+            logging.WARNING: colors['purple'],
+            logging.ERROR: colors['bold_red'],
+            logging.CRITICAL: colors['bold_red'],
+        }
+    
+        def format(self, record):
+            format_str = "%(asctime)s  %(levelname)-6s %(funcName)-20s  line: %(lineno)-5s  %(message)s"
+            reset = "\u001b[0m"
+            log_fmt = None
+            
+            record.msg = str(record.msg)
+            if self.nocolor:
+                pass
+            elif '@' in record.msg[:10]:
+                try:
+                    icolor, tmp = record.msg.split('@', 1)
+                    log_fmt = self.colors.get(icolor)
+                    if log_fmt:
+                        record.msg = tmp
+                except:
+                    raise
+                    pass
+            else:
+                log_fmt = self.FORMATS.get(record.levelno)
+            if log_fmt:
+                record.msg = log_fmt + record.msg + reset
+            formatter = logging.Formatter(format_str, datefmt='%Y-%m-%d %H:%M:%S')
+            return formatter.format(record)
+    
+    logger.setLevel('DEBUG')
+    handler_names = {_.name for _ in logger.handlers}
+    if 'console' not in handler_names:
+        console = logging.StreamHandler(sys.stdout)
+        console.setFormatter(CustomFormatter(nocolor=nocolor))
+        console.setLevel('INFO')
+        console.name = 'console'
+        logger.addHandler(console)
+
+    if fn_log and 'file' not in handler_names:
+        fh_file = logging.FileHandler(fn_log, mode='w', encoding='utf8')
+        fh_file.setLevel('DEBUG')
+        fh_file.setFormatter(CustomFormatter())
+        fh_file.name = 'file'
+        logger.addHandler(fh_file)
+    return logger
+logger = getlogger()
+
+
+def get_gtf_intervals(gtf):
+    intervals = {}
+    for ts, v in gtf.items():
+        chr_, start, end, strand, gene_name = v['chr'], v['start'], v['end'], v['strand'], v['gene_name']
+        intervals.setdefault(chr_, []).append((start, end, gene_name, ts))
+    for chr_, v in intervals.items():
+        intervals[chr_] = sorted(v, key=lambda x: x[0])
+    # cumu max end 
+    cumu_max = {}
+    for chr_, v in intervals.items():
+        cumu_max[chr_] = []
+        max_v = 0
+        for i in v:
+            if i[1] > max_v:
+                max_v = i[1]
+            cumu_max[chr_].append(max_v)
+    return intervals, cumu_max
+
+def get_overlap(intervals, cumu_max, chr_, region):
+    # get the nearest left and right gene
+    if len(region) == 2:
+        start, end = region
+        ts, gn = 'NA', 'NA'
+    else:
+        start, end, gn, ts = region
+    intervals_chr, cumu_max_chr = intervals[chr_], cumu_max[chr_]
+    idx_left = bl(cumu_max_chr, start)
+    # if the cumu_max_chr is like [1, 1, 1, 2, 3, 3, 3, 3, 4]
+    # and when bl(cumu_max_chr, 4), the index will be at the left side of 4, 
+    # however, we'd like the index of the first 3
+    # so we have to run bisect again
+    idx_left = bl(cumu_max_chr, cumu_max_chr[idx_left - 1 if idx_left > 0 else 0])
+    # the idx_left must be a different gene
+    while True:
+        if idx_left == 0:
+            break
+        if intervals_chr[idx_left][2] == gn:
+            idx_left -= 1
+        else:
+            break
+    idx_right = br(intervals_chr, (end,))
+    # th idx_right must be a different gene
+    while True:
+        if idx_right == len(intervals_chr):
+            break
+        if intervals_chr[idx_right][2] == gn:
+            idx_right += 1
+        else:
+            break
+    if idx_right + 1 < len(intervals_chr):
+        idx_right += 1
+    left_gene, right_gene = None, None
+    for i in range(idx_left, idx_right):
+        try:
+            s1, e1, gn1, ts1 = intervals_chr[i]
+        except:
+            logger.error(f'error: chr = {chr_}, {i}, {idx_left}, {idx_right}, {len(intervals_chr)}')
+            sys.exit(1)
+        if gn1 == gn:
+            continue
+        left_distance = start - e1 if s1 < end else 1e8
+        right_distance = s1 - end if e1 > start else 1e8
+        if left_gene is None or left_distance < left_gene[0]:
+            left_gene = (left_distance, s1, e1, gn1, ts1)
+        if right_gene is None or right_distance < right_gene[0]:
+            right_gene = (right_distance, s1, e1, gn1, ts1)
+    if left_gene is None or left_gene[0] == 1e8:
+        left_gene = ('NA', 'NA', 'NA', 'NA', 'NA')
+    if right_gene is None or right_gene[0] == 1e8:
+        right_gene = ('NA', 'NA', 'NA', 'NA', 'NA')
+    return left_gene, right_gene
+
+
+
+def main(organism, fn_pkl, protein_coding):
+    with open(fn_pkl, 'rb') as f:
+        gtf = pickle.load(f)
+    intervals, cumu_max = get_gtf_intervals(gtf)
+    fno = f'{organism}.nearest_gene.tsv' 
+    with open(fno, 'w') as o:
+        header = ['gn', 'ts', 'chr', 'start', 'end', 'strand', 'is_protein_coding', 'up_gene_distance', 'up_gene_start', 'up_gene_end', 'up_gene_name', 'up_gene_ts', 'down_gene_distance', 'down_gene_start', 'down_gene_end', 'down_gene_name', 'down_gene_ts']
+        print('\t'.join(header), file=o)
+        for chr_, v in intervals.items():
+            for iregion in v:
+                gn, ts = iregion[2], iregion[3]
+                strand = gtf[ts]['strand']
+                is_protein_coding = gn in protein_coding
+                left_gene, right_gene = get_overlap(intervals, cumu_max, chr_, iregion)
+                upstream_gene, downstream_gene = (left_gene, right_gene) if strand == '+' else (right_gene, left_gene)
+                row = [gn, ts, chr_, iregion[0], iregion[1], strand, is_protein_coding] + list(upstream_gene) + list(downstream_gene)
+                print('\t'.join(map(str, row)), file=o)
+    logger.info(f"the result is saved to: {fno}")
+
+if __name__ == "__main__":
+    import argparse as arg
+    from argparse import RawTextHelpFormatter
+    ps = arg.ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
+    ps.add_argument('fn_pkl', help="""the path for GTF pickle file""")
+    args = ps.parse_args()
+
+    fn_pkl = args.fn_pkl
+    pw_ref = '/data/cqs/chenh19/tools/nrsa/ref'
+    org_inuse = None
+    for org in ['hg19', 'hg38', 'mm10', 'mm39']:
+        if re.search(rf'[\W_]({org})[\W_]', fn_pkl):
+            org_inuse = org
+            break
+    if org_inuse is None:
+        logger.error(f"the orgnism is not recognized from the file name: {fn_pkl}")
+        sys.exit(1)
+    logger.info(f"the organism is recognized as: {org_inuse}")
+    fn_protein_coding = f'{pw_ref}/{org_inuse}/{org_inuse}.protein_coding.txt'
+
+
+    with open(fn_protein_coding) as f:
+        protein_coding = {_.strip().split('\t')[0] for _ in f}
+        logger.info(f"the protein coding gene number is: {len(protein_coding)}")
+    main(org_inuse, fn_pkl, protein_coding)
