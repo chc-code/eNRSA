@@ -160,7 +160,7 @@ def updatelogger(logger, fn_log, terminal_level=None):
 logger = getlogger(logger_name='NRSA')
 
 
-from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable
+from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable, run_shell
 
 
 def main(args):
@@ -228,7 +228,7 @@ def main(args):
         logger.info('makeTagDirectory...')
         s = time.time()
         cmd_homer = f'makeTagDirectory {pw_homer} -format bed -forceBED  {bed_list}'
-        status = os.system(cmd_homer)
+        status = run_shell(cmd_homer)
         if status:
             logger.error("Error encountered while creating tag directory")
             return status
@@ -236,7 +236,7 @@ def main(args):
         # find peaks
         logger.info(f'Find Peaks...')
         cmd_findpeaks = f'findPeaks {pw_homer} -style groseq -o {fn_peak_txt} -gtf {fn_peak_gtf}'
-        status = os.system(cmd_findpeaks)
+        status = run_shell(cmd_findpeaks)
         if status:
             logger.error("Error encountered while running findPeaks")
             return status
@@ -583,7 +583,7 @@ def main(args):
         for k_enhancer, v in enhancer_count.items():
             enhancer_id = k_enhancer_map[k_enhancer]
             print(f'{enhancer_id}\t{k_enhancer}\t' + '\t'.join(v), file=o)
-    os.system(f'sort -k 1,1n {fn_count_enhancer} > {fn_count_enhancer}.tmp && mv {fn_count_enhancer}.tmp {fn_count_enhancer}')
+    run_shell(f'sort -k 1,1n {fn_count_enhancer} > {fn_count_enhancer}.tmp && mv {fn_count_enhancer}.tmp {fn_count_enhancer}')
     
     # change_enhancer
     logger.info(f'change_enhancer')

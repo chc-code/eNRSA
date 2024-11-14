@@ -2164,8 +2164,12 @@ def run_shell(cmd, echo=False, ret_info=False):
     run shell command and check the return code and stdout stderr
     """
     p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+    s = time.time()
     stdout, stderr = p.communicate()
+    duration = time.time() - s
     retcode = p.returncode
+    if duration > 2:
+        logger.debug(f'cmd = {cmd}, retcode = {retcode}, duration = {duration:.2f}s')
     if ret_info:
         echo = False
     if retcode:
@@ -2429,9 +2433,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             ires = [fn_lb, fn_out_bed]
         elif fn_for_check.endswith('.bed'):
             # check if sorted
-            if respect_sorted is False:
-                is_sorted = 0
-            elif 'sorted' in fn:
+            if respect_sorted and 'sort' in fn:
                 is_sorted = 1
             else:
                 is_sorted = check_is_sorted(fn)
@@ -2447,6 +2449,10 @@ def process_input(pwout_raw, fls, respect_sorted=False):
                 # bedtools can handle gzip format
                 cmd = f'bedtools sort -i {fn} > {fn_out_bed}'
                 retcode = run_shell(cmd)
+                if retcode:
+                    logger.error(f'Error sorting bed file: {fn}')
+                    err = 1
+                    continue
                 ires = [fn_lb, fn_out_bed]
         else:
             logger.error(f"Input file '{fn}' should be in bed or bam format")
@@ -3998,7 +4004,7 @@ def prioritize_enhancer(pwout, fn_peak, rep1, rep2, direction, weight, fdr_thres
             pos = int(pos)
             print(f'{chr_}\t{pos - 1}\t{pos}\t{enhancer_id}', file=o)
 
-    retcode = os.system(f'bedtools sort -i {fn_center_bed} > {fn_center_bed}.tmp;mv {fn_center_bed}.tmp {fn_center_bed}')
+    retcode = run_shell(f'bedtools sort -i {fn_center_bed} > {fn_center_bed}.tmp;mv {fn_center_bed}.tmp {fn_center_bed}')
     if retcode:
         logger.error(f'fail to sort file {fn_center_bed}')
     # fn_center format
@@ -4008,7 +4014,7 @@ def prioritize_enhancer(pwout, fn_peak, rep1, rep2, direction, weight, fdr_thres
 
     cmd = f'bedtools closest -a {fn_center_bed} -b {fn_peak_new} -d > {fn_nearest_peak}'
     logger.debug(cmd)
-    retcode = os.system(cmd)
+    retcode = run_shell(cmd)
     with open(fn_nearest_peak) as f:
         for i in f:
             line = i[:-1].split('\t')
