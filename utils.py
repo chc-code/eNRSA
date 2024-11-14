@@ -363,7 +363,7 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
                     found = 1
                     break
             if not found:
-                tmp = [(fn, os.path.exists(fn)) for fn in flist]
+                tmp = [(fn, os.path.exists(str(fn))) for fn in flist]
                 logger.debug(f'{k} not found: {flist} - {tmp}')
                 need_download[k] = flist[1]
         
