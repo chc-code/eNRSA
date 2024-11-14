@@ -175,8 +175,8 @@ def main(args):
     pwout = args.pwout
     pwout = os.path.realpath(pwout)
     # test writtable
-    writable = test_writable(pwout)
-    if not writable:
+    write_error = test_writable(pwout)
+    if write_error:
         logger.error(f"Output directory is not writable: {pwout}")
         sys.exit(1)
     
