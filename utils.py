@@ -4408,7 +4408,7 @@ def test_writable(pw):
     os.remove(fntest)
     return 0
 def validate_input(args):
-    args = dict(args)
+    args = vars(args)
     args_filelike = ['in1', 'in2', 'gtf', 'fa', 'pwout', 'pw_bed']
     
     # check if the script is inside of docker
