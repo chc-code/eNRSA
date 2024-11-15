@@ -50,7 +50,7 @@ import traceback
 import gc
 sys.dont_write_bytecode = True
 
-from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable
+from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable, validate_input
 
 from utils import Analysis, process_bed_files
 
@@ -221,11 +221,17 @@ def main(args):
     pw_bed = args.pw_bed
     pwout = args.pwout
     
+    status = validate_input(args)
+    if status:
+        logger.error(f"Invalid input arguments")
+        sys.exit(1)
+    
     # test writtable
     write_error = test_writable(pwout)
     if write_error:
         logger.error(f"Output directory is not writable: {pwout}")
         sys.exit(1)
+    
     
     missing = required_attrs - set(defined_attrs)
     exist = required_attrs & set(defined_attrs)

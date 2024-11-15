@@ -2395,6 +2395,22 @@ def process_input(pwout_raw, fls, respect_sorted=False):
 
     if fls is None or not fls:
         return None
+    fls_new = []
+    err = 0
+    for fn in fls:
+        fn = os.path.realpath(fn)
+        if not os.path.exists(fn):
+            logger.error(f'Input file not exist: {fn}')
+            err = 1
+            continue
+        fls_new.append(fn)
+    if err:
+        sys.exit(1)
+    fls = fls_new
+    if err:
+        sys.exit(1)
+    fls = fls_new
+    
     err = 0
     res = []
     lb_map = {}
@@ -2422,22 +2438,24 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             logger.info(f'Converting bam to bed: {fn}, bam file size = {file_size:.1f} GB')
             # still need to do the sorting, because for the following steps using bedtools coverage, the sorted bed will be more memory efficient
             # bedtools sort is faster than linux sort
-            cmd = f"""bedtools bamtobed -i {fn} |bedtools sort -i - > {fn_out_bed}"""
+            fn_converted_bed = f'{pwout_raw}/bed/{fn_lb}.converted.bed'
+            cmd = f"""bedtools bamtobed -i {fn} > {fn_converted_bed}"""
             retcode = run_shell(cmd)
-            if not os.path.exists(fn_out_bed):
+            if not os.path.exists(fn_out_bed) or retcode:
                 logger.error(f'Error converting bam to bed: {fn}')
                 err = 1
             else:
-                file_size = os.path.getsize(fn_out_bed) / 1024 / 1024/1024 # GB
+                file_size = os.path.getsize(fn_converted_bed) / 1024 / 1024/1024 # GB
                 logger.debug(f'converted bed file size: {file_size:.2f} GB')
-            ires = [fn_lb, fn_out_bed]
-        elif fn_for_check.endswith('.bed'):
+            fn_for_check = fn_converted_bed
+
+        # wrap the converted bed too
+        if fn_for_check.endswith('.bed'):
             # check if sorted
             if respect_sorted and 'sort' in fn:
                 is_sorted = 1
             else:
                 is_sorted = check_is_sorted(fn)
-                
             if is_sorted:
                 fn_abs = os.path.realpath(fn)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
@@ -4389,3 +4407,26 @@ def test_writable(pw):
             return 1
     os.remove(fntest)
     return 0
+def validate_input(args):
+    args = dict(args)
+    args_filelike = ['in1', 'in2', 'gtf', 'fa', 'pwout', 'pw_bed']
+    
+    # check if the script is inside of docker
+    in_docker = False
+    if os.path.exists('/.dockerenv'):
+        logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
+        in_docker = True
+    if not in_docker:
+        return 0
+    # only need to check absolute path for docker
+    err = 0
+    for i in args_filelike:
+        if i in args and args[i]:
+            v = args[i]
+            if isinstance(v, str):
+                v = [v]
+            for j in v:
+                if v[0] != '/':
+                    logger.error(f'You are running inside of docker, input {i} must be in absolute path, got {j}')
+                    err = 1
+    return err
