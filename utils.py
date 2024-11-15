@@ -23,6 +23,7 @@ from scipy.stats import chi2
 import warnings
 import urllib.request
 import hashlib
+import tempfile
 sys.dont_write_bytecode = True
 
 pw_code = os.path.dirname(os.path.realpath(__file__))
@@ -1943,6 +1944,11 @@ def process_gtf(home, fn_gtf, pwout, force_rebuild=False, fake_gtf_path=None):
     gtf position is 1-idx, full closed
     fake_gtf_path is just used for building the pre-built pkl file inside of the docker container
     """
+    custom_temp = f"{pwout}/temp"
+    logger.debug(f'set temp folder to {custom_temp}')
+    os.makedirs(custom_temp, exist_ok=True)
+    tempfile.tempdir = custom_temp  # This is a global setting
+    os.environ['TMPDIR'] = custom_temp  # This is also global
 
     err = {'no_transcript_id': 0, 'no_gene_name': 0, 'invalid_line_format': 0, 'invalid_strand': 0}
     fn_gtf = os.path.realpath(fn_gtf)
@@ -3232,7 +3238,7 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
         else:
             ts_without_overlap = set()
     
-    logger.warning(f'modify here, now will get the {downstream_no_overlap_length_str} downstream count for all transcripts')
+    # logger.warning(f'modify here, now will get the {downstream_no_overlap_length_str} downstream count for all transcripts')
     
     
     # seq_pool = {} # key = transcript_id

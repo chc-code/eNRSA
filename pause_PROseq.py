@@ -550,7 +550,10 @@ if __name__ == "__main__":
             else:
                 logger.error(f'exit now ...')
             sys.exit(1)
-
+        except KeyboardInterrupt:
+            e = traceback.format_exc()
+            logger.error(f'Keyboard interrupt\n{e}')
+            sys.exit(1)
     if not retcode:
         logger.debug(f'g@script finished without error')
     else:
