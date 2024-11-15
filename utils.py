@@ -30,6 +30,11 @@ inf_neg = float('-inf')
 bases_set = set('ATGCatgc')
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered in scalar divide")
 
+if os.path.exists('/.dockerenv'):
+    logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
+    in_docker = True
+else:
+    in_docker = False
 
 time_cost_util = {
     'bedtools_around_enhancer_center': 0,
@@ -152,7 +157,7 @@ def refine_chr(chr_):
         chr_ = chr_.replace(_, '')
     return {'23': 'x', '24': 'y', '25': 'mt', 'm': 'mt'}.get(chr_) or chr_
 
-def build_idx_for_fa(fn_fa):
+def build_idx_for_fa(home, fn_fa):
     # >chr1
     # NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
     # NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
@@ -174,7 +179,6 @@ def build_idx_for_fa(fn_fa):
     
     # check if have write permission to the folder of the fa file
     if not os.access(os.path.dirname(fn_fa), os.W_OK):
-        home = os.path.expanduser("~")
         fa_pwout = f'{home}/.nrsa'
         os.makedirs(fa_pwout, exist_ok=True)
     else:
@@ -272,14 +276,13 @@ def check_is_sorted(fn_bed):
     if tmp == chr_order:
         return True
     return False
-def get_ref(organism, fn_gtf=None, fn_fa=None):
+def get_ref(home, organism, fn_gtf=None, fn_fa=None):
     # get the path of the reference files
     ref_files = {}
     pw_code = os.path.dirname(os.path.realpath(__file__))
     # check if the folder is writable
     if not os.access(pw_code, os.W_OK) or pw_code.startswith('/app/nrsa'):
-        logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to $HOME/.nrsa')
-        home = os.path.expanduser("~")
+        logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to {home}/.nrsa')
         pw_code_write = f'{home}/.nrsa'
         os.makedirs(pw_code, exist_ok=True)
     else:
@@ -419,7 +422,7 @@ def get_ref(organism, fn_gtf=None, fn_fa=None):
         logger.debug(f'folders needed = {folders}')
         for ipw in folders:
             os.makedirs(ipw, exist_ok=True)
-        ref_files = download_ref_files(organism, need_download, ref_files)
+        ref_files = download_ref_files(home, organism, need_download, ref_files)
     else:
         logger.debug(f'All reference files exist for {organism}')
 
@@ -457,7 +460,7 @@ def download_file_task(url, save_path, md5_exp=None):
         logger.error(f"Error downloading the file - {save_path}, url = {url}: \n{e}")
         return 1
 
-def download_ref_files(organism, need_download, ref_files):
+def download_ref_files(home, organism, need_download, ref_files):
     """
     download the missing reference files
     """
@@ -470,8 +473,7 @@ def download_ref_files(organism, need_download, ref_files):
     
     url_md5sum = f'{url_base}/files_md5sum.json'
     if not os.access(pw_code, os.W_OK) or pw_code.startswith('/app/nrsa'):
-        logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to $HOME/.nrsa')
-        home = os.path.expanduser("~")
+        logger.debug(f'no write permission to the folder of the code: {pw_code}, will write to {home}/.nrsa')
         pw_code_write = f'{home}/.nrsa'
         os.makedirs(pw_code, exist_ok=True)
         os.makedirs(pw_code + '/ref', exist_ok=True)
@@ -1935,7 +1937,7 @@ def build_tss(gtf_info, fn_tss, fn_tss_tts):
             f.write(f'{v["chr"]}\t{itss}\t{itss}\t{k}\t{v["strand"]}\n')
             o2.write(f'{v["chr"]}\t{itss}\t{itts}\t{k}\t{v["strand"]}\n')
 
-def process_gtf(fn_gtf, pwout, force_rebuild=False, fake_gtf_path=None):
+def process_gtf(home, fn_gtf, pwout, force_rebuild=False, fake_gtf_path=None):
     """
     process the gtf file, get the gene start and end position, and other info
     gtf position is 1-idx, full closed
@@ -1963,7 +1965,6 @@ def process_gtf(fn_gtf, pwout, force_rebuild=False, fake_gtf_path=None):
     
     # check if have write permission to the folder of the gtf file
     if not os.access(os.path.dirname(fn_gtf), os.W_OK) or fn_gtf.startswith('/app/nrsa'):
-        home = os.path.expanduser("~")
         gtf_pwout = f'{home}/.nrsa'
         os.makedirs(gtf_pwout, exist_ok=True)
     else:
@@ -2963,6 +2964,13 @@ class Analysis:
         self.skip_get_mapped_reads = skip_get_mapped_reads
         respect_sorted = vars(args).get('sorted', False)
 
+        if in_docker:
+            home = args.pwout_raw
+        else:
+            home = os.path.expanduser('~')
+        self.home = home
+
+
         for lb, d in zip(['Output', 'Intermediate', 'Known Genes'], [self.pwout, self.inter_dir, self.known_gene_dir]):
             if not os.path.exists(d):
                 logger.debug(f'Making {lb} directory: {d}')
@@ -2999,7 +3007,7 @@ class Analysis:
             if not fa_in.endswith('.fa'):
                 logger.error(f"Invalid fasta file provided, file extension should be .fa in plain text. input = {fa_in}")
                 self.status = 1
-        ref_fls = get_ref(self.organism, fn_gtf=args.gtf, fn_fa=fa_in)
+        ref_fls = get_ref(home, self.organism, fn_gtf=args.gtf, fn_fa=fa_in)
         if ref_fls is None:
             logger.error("Error encountered while retrieving reference files")
             self.status = 1
@@ -3606,8 +3614,14 @@ def pause_longeRNA_main(args):
     for attr, default in optional_attrs.items():
         if attr not in defined_attrs:
             setattr(args, attr, default)
-    # check dependencies
+
+    if in_docker:
+        home = args.pwout_raw
+    else:
+        home = os.path.expanduser('~')
     
+
+    # check dependencies
     skip_get_mapped_reads = args.skip_get_mapped_reads
     dependency_status = check_dependency()
     if dependency_status:
@@ -3672,7 +3686,7 @@ def pause_longeRNA_main(args):
     
     # prepare fasta file
     fn_fa = analysis.ref['fa']
-    fa_idx = build_idx_for_fa(fn_fa)
+    fa_idx = build_idx_for_fa(home, fn_fa)
     fh_fa = open(fn_fa, 'r')
 
     fls = analysis.input_fls # element is [fn_lb, fn_bed]
@@ -4246,7 +4260,7 @@ def prioritize_enhancer(pwout, fn_peak, rep1, rep2, direction, weight, fdr_thres
         df.to_csv(fn_enhancer_prior, sep='\t', na_rep='NA', index=False)
 
     
-def show_system_info():
+def show_system_info(home):
     try:
         import getpass
         hostname = str(os.uname())
@@ -4255,7 +4269,7 @@ def show_system_info():
         # get the group name
         group = os.popen('groups').read().strip()
         # get other basic info
-        logger.debug(f'hostname = {hostname}, user = {user}, group = {group}')
+        logger.debug(f'HOME = {home}, hostname = {hostname}, user = {user}, group = {group}')
     except:
         logger.debug('fail to get system info')
     try:
@@ -4412,10 +4426,6 @@ def validate_input(args):
     args_filelike = ['in1', 'in2', 'gtf', 'fa', 'pwout', 'pw_bed']
     
     # check if the script is inside of docker
-    in_docker = False
-    if os.path.exists('/.dockerenv'):
-        logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
-        in_docker = True
     if not in_docker:
         return 0
     # only need to check absolute path for docker

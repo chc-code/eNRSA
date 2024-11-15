@@ -174,6 +174,7 @@ def main(args):
     # lk (pp, gb, pindex), dir (1, -1, 0), wt (weight), fdr (cutoff)
     pwout = args.pwout
     pwout = os.path.realpath(pwout)
+
     # test writtable
     write_error = test_writable(pwout)
     if write_error:
@@ -191,7 +192,7 @@ def main(args):
 
     status = 0
     logger.debug('start running')
-    ref_fls = get_ref(args.organism, fn_gtf=fn_gtf, fn_fa=fn_fa)
+    ref_fls = get_ref(home, args.organism, fn_gtf=fn_gtf, fn_fa=fn_fa)
     if ref_fls is None:
         logger.error("Error encountered while retrieving reference files")
         status = 1
@@ -279,7 +280,7 @@ def main(args):
     
     # compare the refseq gtf with peak_gtf
     logger.debug('process gtf')
-    gtf_info, fn_tss, fn_tss_tts, err = process_gtf(ref_fls['gtf'], pwout)
+    gtf_info, fn_tss, fn_tss_tts, err = process_gtf(home, ref_fls['gtf'], pwout)
     logger.debug('gtf info loaded')
     fn_enhancer_raw = f'{pwout}/eRNA/Enhancer.raw.txt'
     fn_enhancer = f'{pwout}/eRNA/Enhancer.txt'
@@ -653,6 +654,12 @@ if __name__ == "__main__":
     logger.debug(f'pw_out_raw = {pwout_raw}')
     args.pwout = pwout_raw
     args.pwout_raw = pwout_raw
+
+    if in_docker:
+        home = pwout_raw
+    else:
+        home = os.path.expanduser('~')
+
     args.pw_bed = f'{pwout_raw}/bed'
     if not os.path.exists(args.pw_bed):
         os.makedirs(args.pw_bed, exist_ok=True)

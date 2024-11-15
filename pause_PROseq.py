@@ -52,7 +52,7 @@ sys.dont_write_bytecode = True
 
 from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable, validate_input
 
-from utils import Analysis, process_bed_files
+from utils import Analysis, process_bed_files, in_docker
 
 
 time_cost = {}
@@ -232,7 +232,12 @@ def main(args):
         logger.error(f"Output directory is not writable: {pwout}")
         sys.exit(1)
     
-    
+    if in_docker:
+        home = args.pwout_raw
+    else:
+        home = os.path.expanduser('~')
+    show_system_info(home)
+
     missing = required_attrs - set(defined_attrs)
     exist = required_attrs & set(defined_attrs)
     for attr in exist:
@@ -278,13 +283,13 @@ def main(args):
 
     # prepare fasta file
     fn_fa = analysis.ref['fa']
-    fa_idx = build_idx_for_fa(fn_fa)
+    fa_idx = build_idx_for_fa(home, fn_fa)
     fh_fa = open(fn_fa, 'r')
 
 
     # process the GTF file
     logger.info(f"Processing GTF file: {analysis.ref['gtf']}")
-    gtf_info, fn_tss, fn_tss_tts, err = process_gtf(analysis.ref['gtf'], pwout=analysis.pwout)
+    gtf_info, fn_tss, fn_tss_tts, err = process_gtf(home, analysis.ref['gtf'], pwout=analysis.pwout)
     gtf_info_raw = gtf_info
     err_total = sum(err.values())
     if err_total:
@@ -518,7 +523,6 @@ if __name__ == "__main__":
     if os.path.exists(fn_log):
         os.symlink(fn_log, fn_log_base)
 
-    show_system_info()
     logger.debug(f'working in {os.getcwd()}')
     logger.debug(f'inpu args = {vars(args)}')
     
