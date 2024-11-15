@@ -522,6 +522,8 @@ if __name__ == "__main__":
         os.unlink(fn_log_base)
     if os.path.exists(fn_log):
         os.symlink(fn_log, fn_log_base)
+    if in_docker:
+        logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
 
     logger.debug(f'working in {os.getcwd()}')
     logger.debug(f'inpu args = {vars(args)}')

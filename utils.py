@@ -30,12 +30,6 @@ inf_neg = float('-inf')
 bases_set = set('ATGCatgc')
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered in scalar divide")
 
-if os.path.exists('/.dockerenv'):
-    logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
-    in_docker = True
-else:
-    in_docker = False
-
 time_cost_util = {
     'bedtools_around_enhancer_center': 0,
     'bedtools_around_tss_for_heatmap': 0,
@@ -150,6 +144,12 @@ def getlogger(fn_log=None, logger_name=None, nocolor=False, verbose=False):
     return logger
 
 logger = getlogger(logger_name='NRSA')
+
+if os.path.exists('/.dockerenv'):
+    in_docker = True
+else:
+    in_docker = False
+
 
 def refine_chr(chr_):
     chr_ = chr_.strip().lower()
