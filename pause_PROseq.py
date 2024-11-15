@@ -542,22 +542,22 @@ if __name__ == "__main__":
         if comp_str:
             logger.info(f'g@now running {comp_str}')
         retcode = main(iargs)
-        if retcode:
-            sys.exit(retcode)
+        # if retcode:
+        #     sys.exit(retcode)
         
-        # try:
-        #     retcode = main(iargs) or retcode
-        # except KeyboardInterrupt:
-        #     e = traceback.format_exc()
-        #     logger.error(f'Keyboard interrupt\n{e}')
-        #     sys.exit(1)
-        # except:
-        #     e = traceback.format_exc()
-        #     if 'sys.exit(1)' not in e:
-        #         logger.error(f'Error found during running: log file= {fn_log}, error info = \n\n{e}')
-        #     else:
-        #         logger.error(f'exit now ...')
-        #     sys.exit(1)
+        try:
+            retcode = main(iargs) or retcode
+        except KeyboardInterrupt:
+            e = traceback.format_exc()
+            logger.error(f'Keyboard interrupt\n{e}')
+            sys.exit(1)
+        except:
+            e = traceback.format_exc()
+            if 'sys.exit(1)' not in e:
+                logger.error(f'Error found during running: log file= {fn_log}, error info = \n\n{e}')
+            else:
+                logger.error(f'exit now ...')
+            sys.exit(1)
     if not retcode:
         logger.debug(f'g@script finished without error')
     else:
