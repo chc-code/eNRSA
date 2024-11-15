@@ -4426,7 +4426,7 @@ def validate_input(args):
             if isinstance(v, str):
                 v = [v]
             for j in v:
-                if v[0] != '/':
+                if j[0] != '/':
                     logger.error(f'You are running inside of docker, input {i} must be in absolute path, got {j}')
                     err = 1
     return err

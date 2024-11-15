@@ -667,8 +667,10 @@ if __name__ == "__main__":
             retcode = main(iargs) or retcode
         except:
             e = traceback.format_exc()
-            logger.error(f'Error found during running, please check the log file for more information: {fn_log}')
-            logger.debug(e)
+            if 'sys.exit(1)' not in e:
+                logger.error(f'Error found during running: log file= {fn_log}, error info = \n\n{e}')
+            else:
+                logger.error(f'exit now ...')
             sys.exit(1)
 
     if not retcode:
