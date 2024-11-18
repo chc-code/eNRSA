@@ -3221,25 +3221,25 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
     # reformat the gtf_info by chrom
     gtf_info_new = {}  # k1 = chr, k2 = ts
     
-    invlude_all_ts = True
     for ts, v in gtf_info.items():
         chr_ = v['chr']
         gtf_info_new.setdefault(chr_, {})[ts] = v
-    if islongerna:
-        ts_without_overlap = set()
-    else:
-        def get_down_tts_from_gene_info(gene_info):
-            start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
-            s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
-            return chr_, gn, s1, e1
-        if not invlude_all_ts:
-            ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
-            logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
-        else:
-            ts_without_overlap = set()
-    
+
     # logger.warning(f'modify here, now will get the {downstream_no_overlap_length_str} downstream count for all transcripts')
-    
+    invlude_all_ts = True
+    ts_without_overlap = set(gtf_info_raw)
+    # if islongerna:
+    #     ts_without_overlap = set()
+    # else:
+    #     def get_down_tts_from_gene_info(gene_info):
+    #         start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
+    #         s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
+    #         return chr_, gn, s1, e1
+    #     if not invlude_all_ts:
+    #         ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
+    #         logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
+    #     else:
+    #         ts_without_overlap = set()
     
     # seq_pool = {} # key = transcript_id
     # count_pool = {}
@@ -4326,6 +4326,9 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
         start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
         s1, e1 = (start, end + downstream_no_overlap_length) if strand == '+' else (start - downstream_no_overlap_length, end)
         return chr_, gn, s1, e1
+    
+    gtf_info_active_only = {k: v for k, v in gtf_info_raw.items() if k in active_ts_set}
+    logger.debug(f'gtf_info_raw = {len(gtf_info_raw)}, gtf_info_active_only = {len(gtf_info_active_only)}, n_active_ts = {len(active_ts_set)}')
     ts_without_overlap = get_no_overlap_region_v2(gtf_info_raw, func_get_target_region=get_down_tts_from_gene_info)
     logger.debug(f'transcript without overlap from TSS to {downstream_no_overlap_length_str} downstream of TTS = {len(ts_without_overlap)}')
     df_filter = df_filter.loc[df_filter['Transcript'].isin(ts_without_overlap)]
