@@ -2448,7 +2448,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             fn_converted_bed = f'{pwout_raw}/bed/{fn_lb}.converted.bed'
             cmd = f"""bedtools bamtobed -i {fn} > {fn_converted_bed}"""
             retcode = run_shell(cmd)
-            if not os.path.exists(fn_out_bed) or retcode:
+            if not os.path.exists(fn_converted_bed) or retcode:
                 logger.error(f'Error converting bam to bed: {fn}')
                 err = 1
             else:
@@ -2457,14 +2457,16 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             fn_for_check = fn_converted_bed
 
         # wrap the converted bed too
+        if err:
+            return None
         if fn_for_check.endswith('.bed'):
             # check if sorted
-            if respect_sorted and 'sort' in fn:
+            if respect_sorted and 'sort' in fn_for_check:
                 is_sorted = 1
             else:
-                is_sorted = check_is_sorted(fn)
+                is_sorted = check_is_sorted(fn_for_check)
             if is_sorted:
-                fn_abs = os.path.realpath(fn)
+                fn_abs = os.path.realpath(fn_for_check)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
                 logger.debug(f'Creating symlink for sorted bed file: {fn_abs} -> {fn_dest}')
                 force_symlink(fn_abs, fn_dest)
@@ -2472,7 +2474,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             else:
                 logger.info(f'Sorting input file: {fn}')
                 # bedtools can handle gzip format
-                cmd = f'bedtools sort -i {fn} > {fn_out_bed}'
+                cmd = f'bedtools sort -i {fn_for_check} > {fn_out_bed}'
                 retcode = run_shell(cmd)
                 if retcode:
                     logger.error(f'Error sorting bed file: {fn}')
