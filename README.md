@@ -100,7 +100,7 @@ Use the `-in1` and `-in2` options to specify alignment files for control and cas
 Supported file formats:
 
 - **BAM**: Automatically converted to sorted BED format using `bedtools bamtobed`. This step may take several minutes depending on file size.
-- **BED**: Must be sorted. If the input BED files are already sorted, add the `-sorted` flag to skip the sorting step.
+- **BED**: If the input BED files are already sorted, add the `-sorted` flag to skip the sorting step.
 
 Example:
 
