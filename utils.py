@@ -3318,7 +3318,7 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
                 gbc, gbd, pp_res, tts_ct = get_peak(count_per_base, count_bin, chr_, strand, gene_raw_s, strand_idx, pp_start, pp_end, gb_start, gb_end, tts_start, tts_end, gb_len_mappable, gene_seq,  window_size, step_size, bin_size, prev_peak)
                 # get_peak_method2(count_per_base, count_bin, chr_, strand_idx, s, e, bin_size)
                 # get the count for last exon and the downstream region
-                if invlude_all_ts or transcript_id in ts_without_overlap:
+                if islongerna == False and (invlude_all_ts or transcript_id in ts_without_overlap):
                     last_exon_s, last_exon_e = gene_info['last_exon']
                     last_exon_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, last_exon_s, last_exon_e, bin_size)
                     tts_down_ct = get_peak_method2(count_per_base, count_bin, chr_, strand_idx, tts_down_region_s, tts_down_region_e, bin_size)
@@ -3355,15 +3355,16 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
         logger.warning(f"Number of genes with invalid chromosome = {invalid_chr_transcript}")
 
     # save tts down 50k results
-    fn_tts_down = f'{pwout}/intermediate/tts_down_{downstream_no_overlap_length_str}.txt'
-    logger.info(f'number of transcripts {downstream_no_overlap_length_str} downstream region to file = {len(tts_down_str)}, ts_without_overlap_{downstream_no_overlap_length_str}={len(ts_without_overlap)}')
-    with open(fn_tts_down, 'w') as o:
-        header = ['Transcript', 'Gene', 'chr', 'strand', 'last_exon_len', 'last_exon_s', 'last_exon_e']
-        for fn_lb, _ in fls:
-            header += [f'last_exon_{fn_lb}', f'tts_down_{downstream_no_overlap_length_str}_{fn_lb}', f'ratio_{fn_lb}']
-        print('\t'.join(header), file=o)
-        for ts, v in tts_down_str.items():
-            print('\t'.join(v), file=o)
+    if islongerna == False:
+        fn_tts_down = f'{pwout}/intermediate/tts_down_{downstream_no_overlap_length_str}.txt'
+        logger.info(f'number of transcripts {downstream_no_overlap_length_str} downstream region to file = {len(tts_down_str)}, ts_without_overlap_{downstream_no_overlap_length_str}={len(ts_without_overlap)}')
+        with open(fn_tts_down, 'w') as o:
+            header = ['Transcript', 'Gene', 'chr', 'strand', 'last_exon_len', 'last_exon_s', 'last_exon_e']
+            for fn_lb, _ in fls:
+                header += [f'last_exon_{fn_lb}', f'tts_down_{downstream_no_overlap_length_str}_{fn_lb}', f'ratio_{fn_lb}']
+            print('\t'.join(header), file=o)
+            for ts, v in tts_down_str.items():
+                print('\t'.join(v), file=o)
 
     # save the tts_count
     if save_tts_count:
