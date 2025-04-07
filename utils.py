@@ -61,6 +61,9 @@ def green(s, p=False):
     return s_new
 
 def force_symlink(src, dst):
+    if os.path.realpath(dst) == os.path.realpath(src):
+        # If the source and destination are the same, do nothing
+        return
     try:
         os.symlink(src, dst)
     except FileExistsError:
