@@ -147,6 +147,11 @@ def updatelogger(logger, fn_log, terminal_level=None):
             logger.error(f'invalid logging level: {terminal_level} ')
             return logger
     if fn_log and 'file' not in handler_name_d:
+        if os.path.exists(fn_log):
+            try:
+                os.unlink(fn_log)
+            except:
+                pass
         fh_file = logging.FileHandler(fn_log, mode='w', encoding='utf8')
         fh_file.setLevel('DEBUG')
         fh_file.setFormatter(formatter)
@@ -160,7 +165,7 @@ def updatelogger(logger, fn_log, terminal_level=None):
 logger = getlogger(logger_name='NRSA')
 
 
-from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable, run_shell, validate_input
+from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable, run_shell, validate_input, in_docker
 
 
 def main(args):
@@ -634,7 +639,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = getargs()
-    pwout = args.pwout
+    pwout = os.path.realpath(args.pwout)
     os.makedirs(pwout, exist_ok=True)
     fn_log = f'{pwout}/eRNA.run.log'
     fn_log_base = os.path.basename(fn_log)

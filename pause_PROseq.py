@@ -220,6 +220,8 @@ def main(args):
     }
     pw_bed = args.pw_bed
     pwout = args.pwout
+    pwout = os.path.realpath(pwout)
+    args.pwout = pwout
     
     status = validate_input(args)
     if status:
