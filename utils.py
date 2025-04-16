@@ -3987,7 +3987,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
     
     df_isoform = add_FDR_col(df_isoform, 'pvalue')
     df_isoform.sort_values(['isoform_switched', 'pvalue', 'chr', 'Gene'], ascending=[False, True, True, True], inplace=True)
-    sig = df_isoform.loc[df_isoform.pvalue < 0.05]
+    sig = df_isoform.loc[df_isoform.FDR < 0.05]  # change to FDR
     
     fn_isoform = f'{pwout}/intermediate/{out_prefix}alternative_isoforms_between_conditions.tsv'
     fn_sig = f'{pwout}/known_gene/{out_prefix}alternative_isoforms_between_conditions.sig.tsv'
