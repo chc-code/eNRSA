@@ -543,7 +543,7 @@ if __name__ == "__main__":
     for comp_str, iargs in arg_list:
         if comp_str:
             logger.info(f'g@now running {comp_str}')
-        retcode = main(iargs)
+        # retcode = main(iargs)
         # if retcode:
         #     sys.exit(retcode)
         
