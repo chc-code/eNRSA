@@ -3838,7 +3838,10 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
     
     # round the value
     round_digit = 3
-    data[sam_list] = data[sam_list].round(round_digit)
+    
+    # update 2025-04-22, add 1 to all counts
+    data[sam_list] = data[sam_list].round(round_digit) + 1
+    
     # only keep the genes with multiple isoforms with different TSS
     data = data.groupby('Gene').filter(lambda x: x['Transcript'].nunique() > 1)
     n_transcript['keep_only_multiple_isoforms'] = len(data)
@@ -3897,6 +3900,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         return 1
 
     data = data.sort_values(['chr', 'Gene', pos_in_use])
+    
     data['ctrl_mean'] = (data['ctrl_sum'] / rep1).round(round_digit)
     data['case_mean'] = (data['case_sum'] / rep2).round(round_digit)
     
@@ -3905,6 +3909,8 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         tss_pos_ts1, tss_pos_ts2 = [ts1[pos_in_use], ts2[pos_in_use]]
         ratio_ctrl = (ts1['ctrl_mean'] / ts2['ctrl_mean']).round(round_digit) if ts2['ctrl_mean'] > 0 else np.nan
         ratio_case = (ts1['case_mean'] / ts2['case_mean']).round(round_digit) if ts2['case_mean'] > 0 else np.nan
+
+        
         ts1_mean_ctrl, ts1_mean_case = ts1['ctrl_mean'], ts1['case_mean']
         ts2_mean_ctrl, ts2_mean_case = ts2['ctrl_mean'], ts2['case_mean']
         
@@ -3956,13 +3962,19 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         res = []
         ctrl_max = g.ctrl_mean.max()
         case_max = g.case_mean.max()
+        
+        done_comparison = set()
+        
         for i in range(n_ts - 1):
             ts1 = g.iloc[i]
             pos_ts1 = ts1[pos_in_use]
             for j in range(i + 1, n_ts):
                 ts2 = g.iloc[j]
                 pos_ts2 = ts2[pos_in_use]
-
+                lb1 = '@'.join(sorted([str(pos_ts1), str(pos_ts2)]))
+                if lb1 in done_comparison:
+                    continue
+                done_comparison.add(lb1)
                 # if the TSS / TTS of these 2 transcripts are too close, skip this combination
                 if abs(pos_ts1 - pos_ts2) < distance_thres:
                     continue
