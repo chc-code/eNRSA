@@ -3917,7 +3917,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         isoform_switch_flag = ''
         main_ts = {'case': set(), 'ctrl': set()}
         for condition, max_v in zip(['ctrl', 'case'], [ctrl_max, case_max]):
-            for ts_lb, its in [['ts1', ts1], ['ts2', ts2]]:
+            for ts_lb, its in [['transcript1', ts1], ['transcript2', ts2]]:
                 # logger.info(its)
                 # logger.info(f'{condition}_mean')
                 # logger.info(its['ctrl_mean'])
@@ -3979,7 +3979,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
                 if abs(pos_ts1 - pos_ts2) < distance_thres:
                     continue
                 res.append(compare_transcripts(gn, ts1, ts2, ctrl_max, case_max))
-        return pd.DataFrame(res, columns=['chr', 'Gene', 'Transcript1', 'Transcript2', f'{out_prefix}transcript1', f'{out_prefix}transcript2', 'Ctrl_max_count', 'Ctrl_ts1_count', 'Ctrl_ts2_count', 'Ratio_ts1_vs_ts2_in_Ctrl', 'Case_max_count', 'Case_ts1_count', 'Case_ts2_count', 'Ratio_ts1_vs_ts2_in_Case', 'odds_ratio', 'pvalue', 'main_isoform_ctrl', 'main_isoform_case', 'isoform_switched'])
+        return pd.DataFrame(res, columns=['chr', 'Gene', 'Transcript1', 'Transcript2', f'{out_prefix}transcript1', f'{out_prefix}transcript2', 'Ctrl_max_count', 'Ctrl_count_transcript1', 'Ctrl_count_transcript2', 'Ratio_transcript1_vs_2_in_Ctrl', 'Case_max_count', 'Case_count_transcript1', 'Case_count_transcript2', 'Ratio_transcript1_vs_2_in_Case', 'odds_ratio', 'pvalue', 'main_isoform_ctrl', 'main_isoform_case', 'isoform_switched'])
     
     
     df_isoform = None
