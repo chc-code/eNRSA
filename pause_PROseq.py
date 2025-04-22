@@ -489,7 +489,7 @@ def main(args):
             logger.debug(f'skip plot heatmap due to demo mode')
 
     tmp = json.dumps(time_cost_util, indent=4)
-    logger.info(tmp)
+    logger.debug(f'time consumed = {tmp}')
 
     # # get alternative isoforms
     logger.info('Getting alternative TSS isoforms')
@@ -507,7 +507,7 @@ def main(args):
         downstream_no_overlap_length = args.tts_down
         fn_protein_coding = analysis.ref['protein_coding']
         filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream_no_overlap_length, gtf_info_raw)
-    
+    logger.info('Finished processing PROseq data')
 
     
 if __name__ == "__main__":
