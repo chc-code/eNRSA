@@ -2467,9 +2467,9 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             if respect_sorted and 'sort' in fn_for_check:
                 is_sorted = 1
             else:
-                is_sorted = check_is_sorted(fn_for_check)
+                is_sorted = check_is_sorted(fn)
             if is_sorted:
-                fn_abs = os.path.realpath(fn_for_check)
+                fn_abs = os.path.realpath(fn)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
                 logger.debug(f'Creating symlink for sorted bed file: {fn_abs} -> {fn_dest}')
                 force_symlink(fn_abs, fn_dest)
@@ -2477,7 +2477,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             else:
                 logger.info(f'Sorting input file: {fn}')
                 # bedtools can handle gzip format
-                cmd = f'bedtools sort -i {fn_for_check} > {fn_out_bed}'
+                cmd = f'bedtools sort -i {fn} > {fn_out_bed}'
                 retcode = run_shell(cmd)
                 if retcode:
                     logger.error(f'Error sorting bed file: {fn}')
