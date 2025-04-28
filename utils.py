@@ -4359,7 +4359,11 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     cols = list(df_filter.columns)
     idx_last_exon = [i for i, _ in enumerate(cols) if _.startswith('last_exon_') and i >= n_info_cols]
     idx_down = [i for i, _ in enumerate(cols) if _.startswith('tts_down_')]
-        
+    
+    # fill na with 0 then add 1
+    for i in idx_last_exon + idx_down:
+        df_filter.iloc[:, i] = df_filter.iloc[:, i].fillna(0).astype(int) + 1
+    
     # df_out = df_filter.iloc[:, :n_info_cols].copy()
     n_sam = rep1 + rep2
     
@@ -4402,6 +4406,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
             tmp = le1 * down2
             if all([le1, le2, down1, down2, tmp]):
                 return le2 * down1 / tmp
+            return np.nan
         
         # get the log2fc
         try:
