@@ -2442,7 +2442,7 @@ def process_input(pwout_raw, fls, respect_sorted=False):
             continue
         logger.debug(f'bed file not exist yet: {fn_out_bed}')
         
-        fn_for_check = re.sub(r'\.gz$', '', fn)
+        # fn_for_check = re.sub(r'\.gz$', '', fn)
         if fn_for_check.endswith('.bam'):
             file_size = os.path.getsize(fn) / 1024 / 1024/1024 # GB
             logger.info(f'Converting bam to bed: {fn}, bam file size = {file_size:.1f} GB')
@@ -2462,25 +2462,25 @@ def process_input(pwout_raw, fls, respect_sorted=False):
         # wrap the converted bed too
         if err:
             return None
-        if fn_for_check.endswith('.bed'):
+        if fn_for_check.endswith('.bed') or fn_for_check.endswith('.bed.gz'):
             # check if sorted
             if respect_sorted and 'sort' in fn_for_check:
                 is_sorted = 1
             else:
-                is_sorted = check_is_sorted(fn)
+                is_sorted = check_is_sorted(fn_for_check)
             if is_sorted:
-                fn_abs = os.path.realpath(fn)
+                fn_abs = os.path.realpath(fn_for_check)
                 fn_dest = fn_out_bed_gz if gz_suffix else fn_out_bed
                 logger.debug(f'Creating symlink for sorted bed file: {fn_abs} -> {fn_dest}')
                 force_symlink(fn_abs, fn_dest)
                 ires = [fn_lb, fn_dest]
             else:
-                logger.info(f'Sorting input file: {fn}')
+                logger.info(f'Sorting input file: {fn_for_check}')
                 # bedtools can handle gzip format
-                cmd = f'bedtools sort -i {fn} > {fn_out_bed}'
+                cmd = f'bedtools sort -i {fn_for_check} > {fn_out_bed}'
                 retcode = run_shell(cmd)
                 if retcode:
-                    logger.error(f'Error sorting bed file: {fn}')
+                    logger.error(f'Error sorting bed file: {fn_for_check}')
                     err = 1
                     continue
                 ires = [fn_lb, fn_out_bed]
