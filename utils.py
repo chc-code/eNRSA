@@ -2443,12 +2443,16 @@ def process_input(pwout_raw, fls, respect_sorted=False):
         logger.debug(f'bed file not exist yet: {fn_out_bed}')
         
         # fn_for_check = re.sub(r'\.gz$', '', fn)
+        fn_for_check = fn
+        fn_converted_bed = f'{pwout_raw}/bed/{fn_lb}.converted.bed'
+        if os.path.exists(fn_converted_bed) and os.path.getsize(fn_converted_bed) > 1000:
+            fn_for_check = fn_converted_bed
+        
         if fn_for_check.endswith('.bam'):
             file_size = os.path.getsize(fn) / 1024 / 1024/1024 # GB
             logger.info(f'Converting bam to bed: {fn}, bam file size = {file_size:.1f} GB')
             # still need to do the sorting, because for the following steps using bedtools coverage, the sorted bed will be more memory efficient
             # bedtools sort is faster than linux sort
-            fn_converted_bed = f'{pwout_raw}/bed/{fn_lb}.converted.bed'
             cmd = f"""bedtools bamtobed -i {fn} > {fn_converted_bed}"""
             retcode = run_shell(cmd)
             if not os.path.exists(fn_converted_bed) or retcode:
