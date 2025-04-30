@@ -1737,6 +1737,8 @@ def cmhtest(arr):
     test_res = cmt.test_null_odds(correction=True)
     stat_v = test_res.statistic
     pvalue = chi2.sf(stat_v, 1) # df = 1 for contigency table of 2x2
+    # [case_exposure, control_exposure, case_no_exposure, control_no_exposure]
+    
     # someof the pvalue is still 0, but it match with R, e.g.
     # [[[2894.0, 1340.0], [2504.0, 3180.0]], [[4566.0, 2048.0], [2504.0, 3180.0]], [[2894.0, 1340.0], [3262.0, 3275.0]], [[4566.0, 2048.0], [3262.0, 3275.0]]]
     # [2894.0, 1340.0, 2504.0, 3180.0, 4566.0, 2048.0, 2504.0, 3180.0, 2894.0, 1340.0, 3262.0, 3275.0, 4566.0, 2048.0, 3262.0, 3275.0]
@@ -1824,6 +1826,7 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
                 # below is the gb2 defined in R code, which is wrong, here just used to test the consistency
                 # gb2 = row[(rep2 + rep1 + j + 1) * 2 - 2]
                 if pp1 + pp2 + gb1 + gb2 > 0 and gb2 * pp1 > 0:
+                    # [case_exposure, case_no_exposure,  ctrl_exposure, control_no_exposure]
                     arr.append([[pp2, gb2], [pp1, gb1]])
         odds_ratio, pvalue = cmhtest(arr)
         return np.log2(odds_ratio) if odds_ratio != 'NA' else 'NA', pvalue
@@ -1864,8 +1867,6 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
             sys.exit(1)
         
         data_out['log2fc'] = log2fc
-
-    # run the cmhtest, the data should have 3 dimensions
     else:
         # logger.info(data_pass.columns)
         # logger.info(data_pass.head().values)
@@ -3934,19 +3935,21 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
         tables = []
         
         # if case_sum or ctrl_sum are zero for both ts, will not be suitable for cmhtest
+        # [case_exposure, case_non_exposure], [ctrl_exposure, ctrl_non_exposure]
+        # exposure = ts2  (ts2 / ts1)
         if ts1['ctrl_sum'] + ts2['ctrl_sum'] == 0 or ts1['case_sum'] + ts2['case_sum'] == 0:
             pvalue = np.nan
             odds_ratio = 0
         else:
             for isam1 in sam1:
                 for isam2 in sam2:
-                    tables.append([[int(ts1[isam1]), int(ts1[isam2])], [int(ts2[isam1]), int(ts2[isam2])]])
+                    tables.append([[int(ts1[isam2]), int(ts2[isam2])], [int(ts1[isam1]), int(ts2[isam1])]])
             if len(tables) == 0:
                 pvalue = odds_ratio = np.nan
             elif len(tables) == 1:
                 vals = tables[0][0] + tables[0][1]
                 pvalue = fisher.pvalue(*vals).two_tail
-                odds_ratio = ratio_ctrl / ratio_case
+                odds_ratio = ratio_case / ratio_ctrl
             else:
                 with warnings.catch_warnings(record=True) as w:
                     odds_ratio, pvalue = cmhtest(tables)
@@ -4359,7 +4362,6 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     
     df_filter.to_csv(fno, sep='\t', na_rep='NA', index=False)
     
-    # run the cmhtest like the pindex change
     cols = list(df_filter.columns)
     idx_last_exon = [i for i, _ in enumerate(cols) if _.startswith('last_exon_') and i >= n_info_cols]
     idx_down = [i for i, _ in enumerate(cols) if _.startswith('tts_down_')]
@@ -4392,7 +4394,8 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
                     logger.error(f'idx_last_exon = {idx_last_exon}, idx_down = {idx_down}, row = {row}, i = {i}, j = {j}')
                     sys.exit(1)
                 if le1 + le2 + down1 + down2 > 0 and down2 * le1 > 0:
-                    arr.append([[le2, down2], [le1, down1]])
+                    # arr.append([[le2, down2], [le1, down1]])  # exposure = last exon count
+                    arr.append([[down2, le2], [down1, le1]]) # exposure = downstream count,  use down_count / last_exon_count
         odds_ratio, pvalue = cmhtest(arr)
         return np.log2(odds_ratio) if odds_ratio != 'NA' else 'NA', pvalue
     
@@ -4407,9 +4410,10 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
         # add odds ratio
         def get_odds_ratio(row):
             le1, le2, down1, down2 = row[idx_le1], row[idx_le2], row[idx_down1], row[idx_down2]
-            tmp = le1 * down2
+            tmp = down1 * le2
             if all([le1, le2, down1, down2, tmp]):
-                return le2 * down1 / tmp
+                # return le2 * down1 / tmp   # old , wrong, used the last_exon / down_count
+                return (down2 / le2) / (down1 / le1)
             return np.nan
         
         # get the log2fc
@@ -4421,7 +4425,6 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
             sys.exit(1)
         df_filter['log2fc'] = log2fc
     else:
-        # run cmhtest
         df_filter[['log2fc', 'pvalue']] = df_filter.apply(cmhtest_for_readthrough, axis=1, result_type='expand')
         df_filter = add_FDR_col(df_filter, 'pvalue')
         
