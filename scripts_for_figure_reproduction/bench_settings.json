@@ -1,0 +1,474 @@
+{
+    "v1": {
+        "1.4 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/1.4_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/1.4_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/1.4_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/1.4_GB_step2_1.log"
+                ]
+            }
+        },
+        "3.6 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/3.6_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/3.6_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/3.6_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/3.6_GB_step2_1.log"
+                ]
+            }
+        },
+        "6.8 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/6.8_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/6.8_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/6.8_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/6.8_GB_step2_1.log"
+                ]
+            }
+        },
+        "17.8 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/17.8_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/17.8_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/17.8_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/17.8_GB_step2_1.log"
+                ]
+            }
+        },
+        "2_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/2_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/2_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/2_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/2_sam_step2_1.log"
+                ]
+            }
+        },
+        "4_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/4_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/4_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/4_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/4_sam_step2_1.log"
+                ]
+            }
+        },
+        "8_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh_v1/8_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh_v1/8_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh_v1/8_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh_v1/8_sam_step2_1.log"
+                ]
+            }
+        }
+    },
+    "v2": {
+        "1.4 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/1.4_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/1.4_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/1.4_GB_step1_2.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/1.4_GB_step2_2.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/1.4_GB_step1_3.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/1.4_GB_step2_3.sh",
+                    "/data/nrsa/bench/sh/1.4_GB_step2_3.log"
+                ]
+            }
+        },
+        "3.6 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/3.6_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/3.6_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/3.6_GB_step1_2.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/3.6_GB_step2_2.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/3.6_GB_step1_3.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/3.6_GB_step2_3.sh",
+                    "/data/nrsa/bench/sh/3.6_GB_step2_3.log"
+                ]
+            }
+        },
+        "6.8 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/6.8_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/6.8_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/6.8_GB_step1_2.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/6.8_GB_step2_2.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/6.8_GB_step1_3.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/6.8_GB_step2_3.sh",
+                    "/data/nrsa/bench/sh/6.8_GB_step2_3.log"
+                ]
+            }
+        },
+        "17.8 GB": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/17.8_GB_step1_1.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/17.8_GB_step2_1.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/17.8_GB_step1_2.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/17.8_GB_step2_2.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/17.8_GB_step1_3.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/17.8_GB_step2_3.sh",
+                    "/data/nrsa/bench/sh/17.8_GB_step2_3.log"
+                ]
+            }
+        },
+        "ensGene": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ensGene_step1_1.sh",
+                    "/data/nrsa/bench/sh/ensGene_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ensGene_step2_1.sh",
+                    "/data/nrsa/bench/sh/ensGene_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ensGene_step1_2.sh",
+                    "/data/nrsa/bench/sh/ensGene_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ensGene_step2_2.sh",
+                    "/data/nrsa/bench/sh/ensGene_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ensGene_step1_3.sh",
+                    "/data/nrsa/bench/sh/ensGene_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ensGene_step2_3.sh",
+                    "/data/nrsa/bench/sh/ensGene_step2_3.log"
+                ]
+            }
+        },
+        "knownGene": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/knownGene_step1_1.sh",
+                    "/data/nrsa/bench/sh/knownGene_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/knownGene_step2_1.sh",
+                    "/data/nrsa/bench/sh/knownGene_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/knownGene_step1_2.sh",
+                    "/data/nrsa/bench/sh/knownGene_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/knownGene_step2_2.sh",
+                    "/data/nrsa/bench/sh/knownGene_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/knownGene_step1_3.sh",
+                    "/data/nrsa/bench/sh/knownGene_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/knownGene_step2_3.sh",
+                    "/data/nrsa/bench/sh/knownGene_step2_3.log"
+                ]
+            }
+        },
+        "ncbiRefSeq": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_1.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_1.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_2.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_2.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_3.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_3.sh",
+                    "/data/nrsa/bench/sh/ncbiRefSeq_step2_3.log"
+                ]
+            }
+        },
+        "refGene": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/refGene_step1_1.sh",
+                    "/data/nrsa/bench/sh/refGene_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/refGene_step2_1.sh",
+                    "/data/nrsa/bench/sh/refGene_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/refGene_step1_2.sh",
+                    "/data/nrsa/bench/sh/refGene_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/refGene_step2_2.sh",
+                    "/data/nrsa/bench/sh/refGene_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/refGene_step1_3.sh",
+                    "/data/nrsa/bench/sh/refGene_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/refGene_step2_3.sh",
+                    "/data/nrsa/bench/sh/refGene_step2_3.log"
+                ]
+            }
+        },
+        "2_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/2_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh/2_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/2_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh/2_sam_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/2_sam_step1_2.sh",
+                    "/data/nrsa/bench/sh/2_sam_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/2_sam_step2_2.sh",
+                    "/data/nrsa/bench/sh/2_sam_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/2_sam_step1_3.sh",
+                    "/data/nrsa/bench/sh/2_sam_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/2_sam_step2_3.sh",
+                    "/data/nrsa/bench/sh/2_sam_step2_3.log"
+                ]
+            }
+        },
+        "4_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/4_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh/4_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/4_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh/4_sam_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/4_sam_step1_2.sh",
+                    "/data/nrsa/bench/sh/4_sam_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/4_sam_step2_2.sh",
+                    "/data/nrsa/bench/sh/4_sam_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/4_sam_step1_3.sh",
+                    "/data/nrsa/bench/sh/4_sam_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/4_sam_step2_3.sh",
+                    "/data/nrsa/bench/sh/4_sam_step2_3.log"
+                ]
+            }
+        },
+        "8_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/8_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh/8_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/8_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh/8_sam_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/8_sam_step1_2.sh",
+                    "/data/nrsa/bench/sh/8_sam_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/8_sam_step2_2.sh",
+                    "/data/nrsa/bench/sh/8_sam_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/8_sam_step1_3.sh",
+                    "/data/nrsa/bench/sh/8_sam_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/8_sam_step2_3.sh",
+                    "/data/nrsa/bench/sh/8_sam_step2_3.log"
+                ]
+            }
+        },
+        "16_sam": {
+            "1": {
+                "step1": [
+                    "/data/nrsa/bench/sh/16_sam_step1_1.sh",
+                    "/data/nrsa/bench/sh/16_sam_step1_1.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/16_sam_step2_1.sh",
+                    "/data/nrsa/bench/sh/16_sam_step2_1.log"
+                ]
+            },
+            "2": {
+                "step1": [
+                    "/data/nrsa/bench/sh/16_sam_step1_2.sh",
+                    "/data/nrsa/bench/sh/16_sam_step1_2.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/16_sam_step2_2.sh",
+                    "/data/nrsa/bench/sh/16_sam_step2_2.log"
+                ]
+            },
+            "3": {
+                "step1": [
+                    "/data/nrsa/bench/sh/16_sam_step1_3.sh",
+                    "/data/nrsa/bench/sh/16_sam_step1_3.log"
+                ],
+                "step2": [
+                    "/data/nrsa/bench/sh/16_sam_step2_3.sh",
+                    "/data/nrsa/bench/sh/16_sam_step2_3.log"
+                ]
+            }
+        }
+    }
+}
