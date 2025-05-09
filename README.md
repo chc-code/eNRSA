@@ -13,8 +13,11 @@ There are two ways for using eNRSA:
 If you encounter any issues using this package, please email support#example.com (replace # with @).
 
 Qi Liu, @[liuqivandy](https://github.com/liuqivandy) Email: qi.liu\#vumc.org
+
 Jing Wang, @[jingwang](https://github.com/seasky002002)  Email: jing.wang.1#vumc.org
+
 HuaChang Chen @[chc-code](https://github.com/chc-code) Email: hua-chang.chen#vumc.org
+
 
 # Installation
 
