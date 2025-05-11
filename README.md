@@ -9,7 +9,7 @@ There are two ways for using eNRSA:
 1. Command line usage – download eNRSA code and install the dependencies (see Installation and Usage).
 2. Docker or Singularity container (see Container Usage).
 
-# Mainteiners / Contributors
+# Maintainers / Contributors
 If you encounter any issues using this package, please email support#example.com (replace # with @).
 
 Qi Liu, @[liuqivandy](https://github.com/liuqivandy) Email: qi.liu\#vumc.org
