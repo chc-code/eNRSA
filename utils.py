@@ -4346,6 +4346,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
         logger.debug(f'after filter protein coding = {n_filter_protein_coding}, drop = {n_filter_active - n_filter_protein_coding}')
     else:
         logger.warning(f'No protein coding gene file provided, skip filtering protein coding genes')
+        n_filter_protein_coding = n_filter_active
 
     def get_down_tts_from_gene_info(gene_info):
         start, end, strand, chr_, gn = [gene_info[_] for _ in ['start', 'end', 'strand', 'chr', 'gene_name']]
