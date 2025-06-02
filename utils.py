@@ -353,7 +353,7 @@ def get_ref(home, organism, fn_gtf=None, fn_fa=None):
         fn_gtf = os.path.realpath(fn_gtf)
         fn_fa = os.path.realpath(fn_fa)
         
-        logger.warning(f'new organism input, if you want to reuse this gtf / fa combination by specify -organism option, you can add the organism name as a new line in {fn_extra_org} and create symlink of gtf and fa files to\n{fn_gtf_exp_write}\n{fn_fa_exp_write}')
+        # logger.warning(f'new organism input, if you want to reuse this gtf / fa combination by specify -organism option, you can add the organism name as a new line in {fn_extra_org} and create symlink of gtf and fa files to\n{fn_gtf_exp_write}\n{fn_fa_exp_write}')
 
         ref_files['gtf'] = fn_gtf
         ref_files['fa'] = fn_fa
@@ -2995,8 +2995,14 @@ class Analysis:
         self.status = 0
 
         self.organism = args.organism
+        fa_in = vars(args).get('fa')
+        if fa_in and os.path.exists(fa_in):
+            if not fa_in.endswith('.fa'):
+                logger.error(f"Invalid fasta file provided, file extension should be .fa in plain text. input = {fa_in}")
+                self.status = 1
         if self.organism.lower() not in {'hg19', 'hg38', 'mm10', 'dm3', 'dm6', 'ce10', 'danrer10', 'mm39'}:
-            logger.warning(f"Non-built-in organism specified: {self.organism}, should comes with a valid GTF file and fasta file")
+            if not fa_in or not args.gtf or not os.path.exists(args.gtf):
+                logger.warning(f"Non-built-in organism specified: {self.organism}, should comes with a valid GTF file and fasta file")
 
         # input files
         in1 = process_input(self.pwout_raw, args.in1, respect_sorted=respect_sorted) if raw_input else args.in1 # return = fn_lb, fn_bed
@@ -3018,11 +3024,7 @@ class Analysis:
             self.longerna_flag_str = ''
             self.longerna_prefix = ''
         # ref files
-        fa_in = vars(args).get('fa')
-        if fa_in and os.path.exists(fa_in):
-            if not fa_in.endswith('.fa'):
-                logger.error(f"Invalid fasta file provided, file extension should be .fa in plain text. input = {fa_in}")
-                self.status = 1
+
         ref_fls = get_ref(home, self.organism, fn_gtf=args.gtf, fn_fa=fa_in)
         if ref_fls is None:
             logger.error("Error encountered while retrieving reference files")
