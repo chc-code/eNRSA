@@ -232,22 +232,26 @@ def main(args):
     
     # make homder tags
     fn_peak_txt, fn_peak_gtf = f'{pwout}/intermediate/transcript.txt', f'{pwout}/intermediate/transcript.gtf'
-    if not (demo and os.path.exists(f'{pw_homer}/tagInfo.txt')):
+    fn_taginfo = f'{pw_homer}/tagInfo.txt'
+    if not (demo and os.path.exists(fn_taginfo)):
         bed_list = ' '.join([_[1] for _ in in1 + in2])
         logger.info('makeTagDirectory...')
         s = time.time()
         cmd_homer = f'makeTagDirectory {pw_homer} -format bed -forceBED  {bed_list}'
-        status = run_shell(cmd_homer)
+        status, stdout, stderr = run_shell(cmd_homer, ret_info=True)
         if status:
             logger.error("Error encountered while creating tag directory")
             return status
+        if not os.path.exists(fn_taginfo):
+            logger.error(f'Error: tagInfo.txt from HOMER not generated:\nstdout: {stdout}\nstderr: {stderr}')
+            return 1
 
         # find peaks
         logger.info(f'Find Peaks...')
         cmd_findpeaks = f'findPeaks {pw_homer} -style groseq -o {fn_peak_txt} -gtf {fn_peak_gtf}'
-        status = run_shell(cmd_findpeaks)
+        status, stdout, stderr = run_shell(cmd_findpeaks, ret_info=True)
         if status:
-            logger.error("Error encountered while running findPeaks")
+            logger.error(f"Error encountered while running findPeaks:\nstdout: {stdout}\nstderr: {stderr}")
             return status
     
         time_cost_util['homer'] = time.time() - s
@@ -617,12 +621,12 @@ def main(args):
         args_pause.pw_bed = f'{pwout_raw}/bed'
         args_pause.pwout_raw = pwout_raw
         args_pause.gtf = fno_longerna
+        args_pause.fa = fn_fa
         args_pause.f1 = None
         args_pause.f2 = None  # the f1 and f2 are get from nf.txt
         args_pause.skip_get_mapped_reads = 1 if demo else 0
         logger.info('running pause longeRNA')
         pause_longeRNA_main(args_pause)
-
 
 
     logger.debug(vars(args))
