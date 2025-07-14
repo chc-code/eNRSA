@@ -26,12 +26,6 @@ HuaChang Chen @[chc-code](https://github.com/chc-code) Email: hua-chang.chen#vum
      style="font-size: 18px; color: rgb(86, 86, 201) !important;">
     eNRSA: a faster and more powerful approach for nascent transcriptome analysis.
   </a>
-  <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12231571/">
-    <span class="pmc"
-          style="padding-left: 10px; color: #c05600 !important; font-size: 11px;">
-      Free PMC article
-    </span>
-  </a>
 </div>
 <div class="author_list" style="padding-bottom: 6px;">
   <span class="author">Wang J</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
@@ -60,9 +54,17 @@ HuaChang Chen @[chc-code](https://github.com/chc-code) Email: hua-chang.chen#vum
   </span>
   <span class="doi" style="padding-right: 3px; color: #3e8849;">
     doi: 10.1093/gigascience/giaf071
+        
+        
+        
+        
   </span>
   <span class="pmid" style="padding-left: 15px !important; font-size: 12px;">
     PMID: 40613436
+        
+        
+        
+        
   </span>
 </div>
 
