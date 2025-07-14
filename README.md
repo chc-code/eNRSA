@@ -20,31 +20,31 @@ HuaChang Chen @[chc-code](https://github.com/chc-code) Email: hua-chang.chen#vum
 
 
 # Citation
+<detail>
+  <style>
+    div#reflist a{     color: rgb(86, 86, 201) !important; }
+    div#reflist ol{     list-style-type: decimal;     list-style-position: unset;     padding-left: 25px; }
+    li.reference_item{     padding-bottom: 12px;     padding-left: 8px; }
+    .author_list{     padding-bottom: 6px; }
+    .papertitle{     font-size: 18px; }
+    .spacing{     padding-right: 6px;     font-size: 16px; }
+    .vangard_mem{     text-decoration: underline;     font-weight: bold; }
+    .addstar::after{     content : '°5';     position: relative;     top: -0.9em;     /* left: -0.5em; */     font-size: 10px; }
+    span.journal, span.issue, span.pubdate, span.doi{     padding-right: 3px;     color: #3e8849; }
+    span.pmc{     padding-left: 10px;     color: #c05600 !important;     font-size: 11px; }
+    span.pmid{     padding-left: 15px !important;     font-size: 12px;      }
+    .pmid>a{     text-decoration: none;     color:black !important; }
+    span.journal{     font-style: italic; }
+    span.pubdate{     text-decoration: underline; }
+    </style>
 
-<style>
-div#reflist a{     color: rgb(86, 86, 201) !important; }
-div#reflist ol{     list-style-type: decimal;     list-style-position: unset;     padding-left: 25px; }
-li.reference_item{     padding-bottom: 12px;     padding-left: 8px; }
-.author_list{     padding-bottom: 6px; }
-.papertitle{     font-size: 18px; }
-.spacing{     padding-right: 6px;     font-size: 16px; }
-.vangard_mem{     text-decoration: underline;     font-weight: bold; }
-.addstar::after{     content : '°5';     position: relative;     top: -0.9em;     /* left: -0.5em; */     font-size: 10px; }
-span.journal, span.issue, span.pubdate, span.doi{     padding-right: 3px;     color: #3e8849; }
-span.pmc{     padding-left: 10px;     color: #c05600 !important;     font-size: 11px; }
-span.pmid{     padding-left: 15px !important;     font-size: 12px;      }
-.pmid>a{     text-decoration: none;     color:black !important; }
-span.journal{     font-style: italic; }
-span.pubdate{     text-decoration: underline; }
-</style>
-<div id="reflist"><li class="reference_item">
-<div>
-<a class="papertitle" href="https://pubmed.ncbi.nlm.nih.gov/40613436/">eNRSA: a faster and more powerful approach for nascent transcriptome analysis.</a><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12231571/"><span class="pmc">Free PMC article</span></a>
-</div>
-<div class="author_list"><span class="author">Wang J</span><span class="spacing">,</span><span class="author">Chen H C</span><span class="spacing">,</span><span class="author">Hiebert S W</span><span class="spacing">,</span><span class="author">Sheng Q</span><span class="spacing">,</span><span class="author">Tansey W P</span><span class="spacing">,</span><span class="author vangard_mem">Shyr Y</span><span class="spacing">,</span><span class="author vangard_mem">Liu Q</span><span class="spacing">.</span></div>
-<div><span class="journal">Gigascience. </span><span class="pubdate">2025 Jan 6; </span><span class="issue">14;  </span><span class="doi">doi: 10.1093/gigascience/giaf071</span><span class="pmid">PMID: 40613436</span></div>
-</li></div>
+  <div>
+  <a class="papertitle" href="https://pubmed.ncbi.nlm.nih.gov/40613436/">eNRSA: a faster and more powerful approach for nascent transcriptome analysis.</a><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12231571/"><span class="pmc">Free PMC article</span></a>
+  </div>
+  <div class="author_list"><span class="author">Wang J</span><span class="spacing">,</span><span class="author">Chen H C</span><span class="spacing">,</span><span class="author">Hiebert S W</span><span class="spacing">,</span><span class="author">Sheng Q</span><span class="spacing">,</span><span class="author">Tansey W P</span><span class="spacing">,</span><span class="author vangard_mem">Shyr Y</span><span class="spacing">,</span><span class="author vangard_mem">Liu Q</span><span class="spacing">.</span></div>
+  <div><span class="journal">Gigascience. </span><span class="pubdate">2025 Jan 6; </span><span class="issue">14;  </span><span class="doi">doi: 10.1093/gigascience/giaf071</span><span class="pmid">PMID: 40613436</span></div>
 
+</detail>
 # Installation
 
 ## Local Installation
