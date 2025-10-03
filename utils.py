@@ -1650,6 +1650,7 @@ def change_pp_gb(n_gene_cols, fn, pwout, rep1, rep2, window_size, factor1=None, 
     adapted from Rscript change_pp_gb.R
     if factor_flag == 1, then will use these normalization factors, otherwise , will use DESeq2 to normalize the data
     fn = count_pp_gb.txt
+    n_gene_cols = 2 for known gene, and 1 for eRNA
 
     """
     # input file = my $out_pp_gb = $inter_dir . "count_pp_gb.txt";
