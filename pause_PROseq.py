@@ -525,10 +525,6 @@ if __name__ == "__main__":
     terminal_level = 'DEBUG' if args.verbose else None
     logger = updatelogger(logger, fn_log, terminal_level=terminal_level)
 
-    if os.path.exists(fn_log_base):
-        os.unlink(fn_log_base)
-    if os.path.exists(fn_log):
-        os.symlink(fn_log, fn_log_base)
     if in_docker:
         logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
 

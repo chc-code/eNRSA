@@ -661,11 +661,6 @@ if __name__ == "__main__":
     terminal_level = 'DEBUG' if args.verbose else None
     logger = updatelogger(logger, fn_log, terminal_level=terminal_level)
 
-    try:
-        force_symlink(fn_log, fn_log_base)
-    except:
-        pass
-
     logger.debug(f'working in {os.getcwd()}')
     logger.debug(f'inpu args = {vars(args)}')
 

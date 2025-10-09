@@ -1547,7 +1547,7 @@ def filter_pp_gb(data, n_gene_cols, rep1, rep2, skip_filtering=False):
 
     return col_idx, sam_list, idx_ppc_combined, idx_gbc_combined, idx_gbd_combined, idx_gene_cols, data_pass, data_drop, sum_gbc
 
-def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, factor_flag, factor1=None, factor2=None, islongerna=False):
+def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, factor_flag, factor1=None, factor2=None, islongerna=False, data_coord=None):
     # data = processed, count_pp_gb.txt, already removed the chr, start, end  and strand column, and already collapsed the transcripts with the same gene
     # if factor1, factor2 is not None, it should be a list
     # n_gene_cols = 2 for known gene, and 1 for eRNA
@@ -1571,7 +1571,12 @@ def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, fa
     # logger.warning(data_drop.head())
     
     if not islongerna:
-        data_pass.iloc[:, idx_gene_cols].to_csv(f'{pwout}/intermediate/active_gene.txt', sep='\t', index=False, header=False, na_rep='NA')
+        # merge with the coord data by first 2 columns
+        # Transcript	Gene	chr	start	end	strand
+        data_coord.columns = list(data.columns[:n_gene_cols]) + ['chr', 'TSS', 'TTS', 'strand']
+        df_active_gene = data_pass.iloc[:, idx_gene_cols]
+        df_active_gene = df_active_gene.merge(data_coord, on=list(data.columns[:n_gene_cols]), how='left')
+        df_active_gene.to_csv(f'{pwout}/intermediate/active_gene.txt', sep='\t', index=False, header=False, na_rep='NA')
         
         fn_gbc_sum = f'{pwout}/intermediate/gbc_sum.json'
         with open(fn_gbc_sum, 'w')  as o:
@@ -1688,6 +1693,7 @@ def change_pp_gb(n_gene_cols, fn, pwout, rep1, rep2, window_size, factor1=None, 
     data_raw = pd.read_csv(fn, sep='\t')
     data = data_raw.copy()
     data = data.iloc[:, list(range(n_gene_cols)) + list(range(n_gene_cols + n_extra_cols, len(data.columns)))]
+    data_coord = data_raw.iloc[:, list(range(n_gene_cols + n_extra_cols))]
     cols = data.columns
     cols_ppc = [i for i in cols if i.startswith('ppc_')]
     cols_gbc = [i for i in cols if i.startswith('gbc_')]
@@ -1717,7 +1723,7 @@ def change_pp_gb(n_gene_cols, fn, pwout, rep1, rep2, window_size, factor1=None, 
     n_sam = rep1 + rep2
     
     # (rep1, rep2, data, pwout, window_size, factor_flag, factor1=None, factor2=None)
-    size_factors, sam_list = change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, factor_flag, factor1, factor2, islongerna=islongerna)
+    size_factors, sam_list = change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, factor_flag, factor1, factor2, islongerna=islongerna, data_coord=data_coord)
 
     # get the normalized data
     n_prev_cols = n_gene_cols + n_extra_cols
