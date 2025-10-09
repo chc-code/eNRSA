@@ -50,7 +50,7 @@ import traceback
 import gc
 sys.dont_write_bytecode = True
 
-from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable, validate_input
+from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable, validate_input, filter_pindex
 
 from utils import Analysis, process_bed_files, in_docker
 
@@ -487,6 +487,8 @@ def main(args):
             draw_heatmap_pp_change(n_gene_cols, analysis.pwout, pw_bed,  fls_ctrl=analysis.control_bed, fls_case=analysis.case_bed, fn_tss=fn_tss, region_size=5000, bin_size=200, outname='heatmap', skipe_bedtools_coverage=demo)
         else:
             logger.debug(f'skip plot heatmap due to demo mode')
+        
+        filter_pindex(pwout)
 
     tmp = json.dumps(time_cost_util, indent=4)
     logger.debug(f'time consumed = {tmp}')

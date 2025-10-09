@@ -1614,7 +1614,12 @@ def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, fa
             res_df_full = pd.concat([res_df, data_drop_gb.iloc[:, idx_gene_cols]])
             
             res_df_full.to_csv(f'{pw_change_prefix}gb_change.txt', sep='\t', index=False, na_rep='NA')
-            
+            # get the ts list and filter the pindex files
+            ts_list = set(res_df_full.iloc[:, 0])
+            logger.debug(f'number of ts in ts_list = {len(ts_list)}')
+            with open(f'{pwout}/intermediate/ts_list_in_gb_change.pkl', 'wb') as o:
+                pickle.dump(ts_list, o)
+
             # pp change
             try:
                 res_df, _ = run_deseq2(n_gene_cols, data_pass_pp, metadata, ref_level=ref_level, size_factors_in=size_factors, test_level=test_level)
@@ -1629,6 +1634,10 @@ def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, fa
                 
             res_df_full = pd.concat([res_df, data_drop_pp.iloc[:, idx_gene_cols]])
             res_df_full.to_csv(f'{pw_change_prefix}pp_change.txt', sep='\t', index=False, na_rep='NA')
+            
+
+            
+            
     elif rep1 == 1:
         logger.debug('single contrl sample only')
         size_factors = 1 # size factor is 1 for the only sample
@@ -1881,6 +1890,48 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
     data_out_full.to_csv(fno, sep='\t', index=False, na_rep='NA')
     # logger.info(f'pindex_change done : {ana_type}')
     # logger.info(data_out.head())
+
+def filter_pindex(pwout):
+    fn_ts_set = f'{pwout}/intermediate/ts_list_in_gb_change.pkl'
+    if not os.path.exists(fn_ts_set):
+        logger.warning(f'transcript list in gb_change file not found, skip filter pindex files')
+        return 1
+    with open(fn_ts_set, 'rb') as f:
+        valid_ts = pickle.load(f)
+    fn_pindex = f'{pwout}/known_gene/pindex.txt'
+    fn_pindex_change = f'{pwout}/known_gene/pindex_change.txt'
+    
+    ts_missing = []
+    n_ts_remain = 0
+    for fn in [fn_pindex, fn_pindex_change]:
+        if not os.path.exists(fn):
+            logger.warning(f'file not found: {fn}, skip filtering pindex files')
+            continue
+        fn_rename = fn.replace('.txt', '_full.txt')
+        if os.path.exists(fn_rename):
+            logger.warning(f'file already exists: {fn_rename}, skip filtering pindex files')
+            continue
+        os.rename(fn, fn_rename)
+        with open(fn_rename) as f, open(fn, 'w') as o:
+            header = f.readline()
+            o.write(header)
+            res = {}
+            for i in f:
+                ts = i.split('\t', 1)[0]
+                if ts in valid_ts:
+                    res[ts] = i
+            for ts in valid_ts:
+                if ts in res:
+                    o.write(res[ts])
+                    n_ts_remain += 1
+                else:
+                    ts_missing.append(ts)
+    if ts_missing:
+        logger.warning(f'{len(ts_missing)} transcripts are missing in pindex files, e.g. {ts_missing[:10]} ...')
+    logger.debug(f'after filtering, {n_ts_remain} transcripts remain in pindex files, n_transcripts in gb_change = {len(valid_ts)}')
+    
+    
+
 
 def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=5000, islongerna=False):
     strand = gene_info['strand']
