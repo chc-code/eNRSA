@@ -19,6 +19,55 @@ Jing Wang, @[jingwang](https://github.com/seasky002002)  Email: jing.wang.1#vumc
 HuaChang Chen @[chc-code](https://github.com/chc-code) Email: hua-chang.chen#vumc.org
 
 
+# Citation
+
+<div>
+  <a class="papertitle" href="https://pubmed.ncbi.nlm.nih.gov/40613436/"
+     style="font-size: 18px; color: rgb(86, 86, 201) !important;">
+    eNRSA: a faster and more powerful approach for nascent transcriptome analysis.
+  </a>
+</div>
+<div class="author_list" style="padding-bottom: 6px;">
+  <span class="author">Wang J</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author">Chen H C</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author">Hiebert S W</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author">Sheng Q</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author">Tansey W P</span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author vangard_mem"
+        style="text-decoration: underline; font-weight: bold;">
+    Shyr Y
+  </span><span class="spacing" style="padding-right: 6px; font-size: 16px;">,</span>
+  <span class="author vangard_mem"
+        style="text-decoration: underline; font-weight: bold;">
+    Liu Q
+  </span><span class="spacing" style="padding-right: 6px; font-size: 16px;">.</span>
+</div>
+<div>
+  <span class="journal" style="padding-right: 3px; color: #3e8849; font-style: italic;">
+    Gigascience.
+  </span>
+  <span class="pubdate" style="padding-right: 3px; color: #3e8849; text-decoration: underline;">
+    2025 Jan 6;
+  </span>
+  <span class="issue" style="padding-right: 3px; color: #3e8849;">
+    14;
+  </span>
+  <span class="doi" style="padding-right: 3px; color: #3e8849;">
+    doi: 10.1093/gigascience/giaf071
+        
+        
+        
+        
+  </span>
+  <span class="pmid" style="padding-left: 15px !important; font-size: 12px;">
+    PMID: 40613436
+        
+        
+        
+        
+  </span>
+</div>
+
 # Installation
 
 ## Local Installation
