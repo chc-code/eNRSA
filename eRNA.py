@@ -167,6 +167,10 @@ logger = getlogger(logger_name='NRSA')
 
 from utils import process_input, check_dependency, get_ref, process_gtf, gtf_compare, get_other_region, get_enhancer, refine_chr, run_shell, sort_bed_like_file, change_enhancer, draw_signal, time_cost_util, parse_design_table, pause_longeRNA_main, prioritize_enhancer, force_symlink, test_writable, run_shell, validate_input, in_docker
 
+from utils import VERSION as VERSION_utils
+VERSION_step2 = '2025-10-09'
+
+logger.debug(f'NRSA step2 version: {VERSION_step2}, utils version: {VERSION_utils}')
 
 def main(args):
     args_d = vars(args)

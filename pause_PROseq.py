@@ -49,8 +49,9 @@ import json
 import traceback
 import gc
 sys.dont_write_bytecode = True
-
 from utils import check_dependency, build_idx_for_fa,  process_gtf,  change_pp_gb, change_pindex, draw_box_plot, draw_heatmap_pindex, draw_heatmap_pp_change, get_FDR_per_sample, add_value_to_gtf, time_cost_util, parse_design_table, get_alternative_isoform_across_conditions, build_design_table, show_system_info, filter_tts_downstream_count, test_writable, validate_input, filter_pindex
+from utils import VERSION as VERSION_utils
+VERSION_step1 = '2025-10-09'
 
 from utils import Analysis, process_bed_files, in_docker
 
@@ -158,6 +159,8 @@ def updatelogger(logger, fn_log, terminal_level=None):
     return logger
 
 logger = getlogger(logger_name='NRSA')
+
+logger.debug(f'NRSA step1 version = {VERSION_step1}, utils version = {VERSION_utils}')
 
 
 def bench(s, lb):

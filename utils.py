@@ -3,6 +3,7 @@
 """
 functions used for NRSA package
 """
+VERSION='2025-10-09'
 import os
 import sys
 import re
