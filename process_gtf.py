@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python3
 import os, sys, hashlib, pickle, gzip, re, json
 import sys
 def getlogger(logger_name=None, fn_log=None, nocolor=False):
@@ -88,7 +88,7 @@ def refine_chr(chr_):
         chr_ = chr_.replace(_, '')
     return {'23': 'x', '24': 'y', '25': 'mt', 'm': 'mt'}.get(chr_) or chr_
 
-def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=None):
+def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=False):
     """
     process the gtf file, get the gene start and end position, and other info
     gtf position is 1-idx, full closed
@@ -99,8 +99,14 @@ def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=None):
     fn_gtf = os.path.realpath(fn_gtf)
     fn_gtf_lb = os.path.basename(fn_gtf).replace('.gz', '').replace('.gtf', '')
     
-    if fake_gtf_path is not None:
-        fn_gtf_md5 = get_md5_str(fake_gtf_path)[:8]
+    if fake_gtf_path is True:
+        tmp = os.path.realpath(fn_gtf).split('/')
+        fnpure = tmp[-1]
+        build = tmp[-2]
+        if build.lower() in {'hg19', 'hg38', 'mm10', 'mm39', 'dm3', 'dm6', 'cd10', 'danrer10'}:
+            fnpure = f'{build}/{fnpure}'
+        gtf_path_in_docker = f'/app/nrsa/ref/{fnpure}'
+        fn_gtf_md5 = get_md5_str(gtf_path_in_docker)[:8]
     else:
         fn_gtf_md5 = get_md5_str(fn_gtf)[:8]
     fn_gtf_size = os.path.getsize(fn_gtf)
@@ -120,19 +126,19 @@ def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=None):
     
     if os.path.exists(fn_gtf_pkl_default):
         fn_gtf_pkl = fn_gtf_pkl_default
-    logger.debug(f'fn_gtf_pkl = {fn_gtf_pkl}, fn_gtf_meta_json = {fn_gtf_meta_json}')
+    logger.info(f'fn_gtf_pkl = {fn_gtf_pkl}, fn_gtf_meta_json = {fn_gtf_meta_json}')
     if os.path.exists(fn_gtf_meta_json):
         # print the content
         with open(fn_gtf_meta_json) as f:
-            logger.debug(f'gtf_meta_json = \n{f.read()}')
+            logger.info(f'gtf_meta_json = \n{f.read()}')
 
     if os.path.exists(fn_gtf_pkl) and not force_rebuild:
-        logger.debug(f'loading gtf from pickle: {fn_gtf_pkl}')
-        
+        logger.info(f'loading gtf from pickle: {fn_gtf_pkl}')
         with open(fn_gtf_pkl, 'rb') as f:
             gtf_info = pickle.load(f)
-
         return gtf_info, err
+    elif os.path.exists(fn_gtf_pkl) and force_rebuild:
+        logger.warning(f'force rebuild the gtf pkl file, ignore existing pkl file: {fn_gtf_pkl}')
     
     gtf_col_idx = {
         'chr': 0,
@@ -187,7 +193,7 @@ def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=None):
                 tmp = err.setdefault(line_err, 0)
                 err[line_err] += 1
                 if err[line_err] < 10:
-                    logger.debug(f'error during processing gtf {line_err}: {i}')
+                    logger.info(f'error during processing gtf {line_err}: {i}')
                 
                 continue
             
@@ -246,15 +252,15 @@ def process_gtf(fn_gtf,  force_rebuild=False, fake_gtf_path=None):
             res[transcript_id_new]['last_exon'] = last_exon[transcript_id_demo]
     meta['n_merged'] = n_merged
     meta['final_n_transcripts'] = len(res)
-    logger.debug(f'g@merged {n_merged} transcripts with same start and end position')
-    # logger.debug(meta)
+    logger.info(f'g@merged {n_merged} transcripts with same start and end position')
+    # logger.info(meta)
     
     with open(fn_gtf_pkl, 'wb') as o:
-        logger.debug(f'dump to {fn_gtf_pkl}')
+        logger.info(f'dump to {fn_gtf_pkl}')
         pickle.dump(res, o)
     
     with open(fn_gtf_meta_json, 'w') as o:
-        logger.debug(f'dump to {fn_gtf_meta_json}')
+        logger.info(f'dump to {fn_gtf_meta_json}')
         json.dump(meta, o, indent=4)
 
 
@@ -275,4 +281,4 @@ if __name__ == "__main__":
     
     args = ps.parse_args()
 
-    process_gtf(args.fn, force_rebuild=args.force)
+    process_gtf(args.fn, force_rebuild=args.force, fake_gtf_path=True)
