@@ -3,7 +3,7 @@
 """
 functions used for NRSA package
 """
-VERSION='2025-10-09'
+VERSION='2025-10-10'
 import os
 import sys
 import re
@@ -27,6 +27,7 @@ import hashlib
 import tempfile
 sys.dont_write_bytecode = True
 
+
 pw_code = os.path.dirname(os.path.realpath(__file__))
 inf_neg = float('-inf')
 bases_set = set('ATGCatgc')
@@ -38,18 +39,51 @@ time_cost_util = {
     
     }
 
+
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
         self._original_stderr = sys.stderr
+        
+        # Save the actual file descriptors
+        self._stdout_fd = sys.stdout.fileno()
+        self._stderr_fd = sys.stderr.fileno()
+        self._saved_stdout_fd = os.dup(self._stdout_fd)
+        self._saved_stderr_fd = os.dup(self._stderr_fd)
+        
+        # Redirect to devnull at the file descriptor level
+        self._devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(self._devnull, self._stdout_fd)
+        os.dup2(self._devnull, self._stderr_fd)
+        
+        # Also redirect Python's sys.stdout/stderr
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
-
+        
+        return self
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # Force garbage collection while suppressed
+        gc.collect()
+        gc.collect()
+        
+        # Close Python-level redirects
         sys.stdout.close()
         sys.stderr.close()
+        
+        # Restore file descriptors
+        os.dup2(self._saved_stdout_fd, self._stdout_fd)
+        os.dup2(self._saved_stderr_fd, self._stderr_fd)
+        
+        # Close saved descriptors
+        os.close(self._saved_stdout_fd)
+        os.close(self._saved_stderr_fd)
+        os.close(self._devnull)
+        
+        # Restore Python's sys.stdout/stderr
         sys.stdout = self._original_stdout
         sys.stderr = self._original_stderr
+
 def red(s, p=False):
     s_new = f'\u001b[31;1m{s}\u001b[0m'
     if p:
@@ -682,7 +716,7 @@ def draw_box_plot(n_gene_cols, pwout, out_name, n_rep1, n_rep2=None, gn_list=Non
     
     # draw the box plot, adapted from boxplot.R
     # R CMD --args outdir=\"$inter_dir\" pname=\"$name\" custom=1 rep1=$rep1 rep2=$rep2
-    df_box = pd.read_csv(fno, sep='\t')
+    df_box = pd.read_csv(fno, sep='\t', low_memory=False)
     cols_pp_density = [_ for _ in df_box.columns if _.startswith('ppd_')]
     cols_gb_density = [_ for _ in df_box.columns if _.startswith('gbd_')]
     cols_pindex = [_ for _ in df_box.columns if _.endswith('pindex')]
@@ -782,7 +816,7 @@ def draw_heatmap_pindex(pwout, fdr_thres=0.05, fc_thres=0):
         logger.error(f'{fn_pindex_change} not found')
         return 1
 
-    data_plot = pd.read_csv(fn_pindex_change, sep='\t')
+    data_plot = pd.read_csv(fn_pindex_change, sep='\t', low_memory=False)
     # Transcript	Gene	log2fc	pvalue	FDR
     col_fdr, col_logfc = 'FDR', 'log2fc'
     data_plot[col_logfc] = data_plot[col_logfc].replace([np.inf, -np.inf], np.nan)
@@ -982,7 +1016,7 @@ def draw_signal(pwout, fn_enhancer_center, fls_ctrl, fls_case, chr_map, distance
     nf_array = np.array([nf[fn_lb] for fn_lb in sam_list])
     
     
-    data = pd.read_csv(fn_pro_signal, sep='\t')
+    data = pd.read_csv(fn_pro_signal, sep='\t', low_memory=False)
     # get the normalized count
     data[sam_list] = data[sam_list] * nf_array
 
@@ -1219,8 +1253,8 @@ def draw_heatmap_pp_change(n_gene_cols, pwout, pw_bed, fls_ctrl, fls_case, fn_ts
     # heatmap.R  --args file=\"$data_bed\" outdir=\"$inter_dir\" pname=\"$outname\" window=$bin_size region=$region_size
     # each row is [transcript_id, chr_, pos, strand, logfc]
     # read the count table
-    df_case = pd.read_csv(f'{pwout}/intermediate/case.count', sep='\t')
-    df_ctrl = pd.read_csv(f'{pwout}/intermediate/control.count', sep='\t')
+    df_case = pd.read_csv(f'{pwout}/intermediate/case.count', sep='\t', low_memory=False)
+    df_ctrl = pd.read_csv(f'{pwout}/intermediate/control.count', sep='\t', low_memory=False)
     case_log = np.log2(df_case + 1)
     ctrl_log = np.log2(df_ctrl + 1)
     df_delta = case_log - ctrl_log
@@ -1537,7 +1571,7 @@ def filter_pp_gb(data, n_gene_cols, rep1, rep2, skip_filtering=False):
     cols_gbd_pass = [f'tmp_gbd_pass_{sn+1}' for sn in range(n_sam)]
     data['tmp_gbd_pass'] = data[cols_gbd_pass].apply(lambda x: x.sum()/n_sam > 0.004, axis=1)
 
-    
+
     # already compared with R result, the same
     data_pass = data[data['tmp_ppc_pass'] & data['tmp_gbd_pass']] # data0 in perl code
     data_drop = data.drop(data_pass.index) # data_0 in perl code
@@ -1608,6 +1642,7 @@ def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, fa
     # logger.warning(rows_with_na.shape)
     # logger.warning(rows_with_na.head())
     
+    
     if rep2 > 0:
         # gb change
         logger.info('running DESeq2')
@@ -1640,9 +1675,6 @@ def change_pp_gb_with_case(n_gene_cols, rep1, rep2, data, pwout, window_size, fa
                 
             res_df_full = pd.concat([res_df, data_drop_pp.iloc[:, idx_gene_cols]])
             res_df_full.to_csv(f'{pw_change_prefix}pp_change.txt', sep='\t', index=False, na_rep='NA')
-            
-
-            
             
     elif rep1 == 1:
         logger.debug('single contrl sample only')
@@ -1690,7 +1722,7 @@ def change_pp_gb(n_gene_cols, fn, pwout, rep1, rep2, window_size, factor1=None, 
 
     fn_norm = f'{pw_change_prefix}normalized_pp_gb.txt'
 
-    data_raw = pd.read_csv(fn, sep='\t')
+    data_raw = pd.read_csv(fn, sep='\t', low_memory=False)
     data = data_raw.copy()
     data = data.iloc[:, list(range(n_gene_cols)) + list(range(n_gene_cols + n_extra_cols, len(data.columns)))]
     data_coord = data_raw.iloc[:, list(range(n_gene_cols + n_extra_cols))]
@@ -1815,7 +1847,7 @@ def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, fac
         logger.warning(f'Only control samples were specified, skip performing change_pindex...')
         return 
     is_erna = True if fno_prefix == 'longeRNA-' else False
-    data = pd.read_csv(fn, sep='\t')
+    data = pd.read_csv(fn, sep='\t', low_memory=False)
     n_sam = rep1 + rep2
     if is_erna:
         # the data does not contains the chr, start, end, strand columns, and there is no Gene column
@@ -1916,9 +1948,9 @@ def filter_pindex(pwout):
             continue
         fn_rename = fn.replace('.txt', '_full.txt')
         if os.path.exists(fn_rename):
-            logger.warning(f'file already exists: {fn_rename}, skip filtering pindex files')
-            continue
-        os.rename(fn, fn_rename)
+            logger.debug(f'file already exists: {fn_rename}, skip filtering pindex files')
+        else:
+            os.rename(fn, fn_rename)
         with open(fn_rename) as f, open(fn, 'w') as o:
             header = f.readline()
             o.write(header)
@@ -1933,11 +1965,10 @@ def filter_pindex(pwout):
                     n_ts_remain += 1
                 else:
                     ts_missing.append(ts)
-    if ts_missing:
-        logger.warning(f'{len(ts_missing)} transcripts are missing in pindex files, e.g. {ts_missing[:10]} ...')
-    logger.debug(f'after filtering, {n_ts_remain} transcripts remain in pindex files, n_transcripts in gb_change = {len(valid_ts)}')
-    
-    
+        if ts_missing:
+            logger.warning(f'{len(ts_missing)} transcripts are missing in pindex files, e.g. {ts_missing[:10]} ...')
+        logger.debug(f'after filtering, {n_ts_remain} transcripts remain in pindex files, n_transcripts in gb_change = {len(valid_ts)}')
+            
 
 
 def add_value_to_gtf(gene_info, pro_up, pro_down, gb_down_distance, tts_padding, tts_down_length=5000, islongerna=False):
@@ -3861,7 +3892,7 @@ def get_alternative_isoform_across_conditions(fn, pwout, pw_bed, rep1, rep2, tts
     the normalized version
     """
     n_transcript = {}
-    data = pd.read_csv(fn, sep='\t')
+    data = pd.read_csv(fn, sep='\t', low_memory=False)
     n_orig = len(data)
     n_transcript['input'] = n_orig
     
@@ -4370,8 +4401,7 @@ def show_system_info(home):
         logger.debug(f'python path = {sys.executable}')
         logger.info(f'utils path = {__file__}')
         logger.debug(f'current working directory = {os.getcwd()}')
-        from __init__ import __version__, __doc__
-        logger.info(f'current version = {__version__}, doc = {__doc__}')
+        logger.info(f'current util version = {VERSION}')
     except:
         logger.debug('fail to get python info')
     
@@ -4390,7 +4420,7 @@ def filter_tts_downstream_count(pwout, fn_protein_coding, rep1, rep2, downstream
     n_info_cols = 7  # first 7 columns are the reference columns
     with open(fn_active_gene) as f:
         active_ts_set = {_.strip().split('\t')[0] for _ in f}
-    df = pd.read_csv(fn_count, sep='\t')
+    df = pd.read_csv(fn_count, sep='\t', low_memory=False)
     n_orig = len(df)
     df_filter = df.loc[df['Transcript'].isin(active_ts_set)].copy()
     n_filter_active = len(df_filter)

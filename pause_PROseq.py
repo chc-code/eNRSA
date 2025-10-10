@@ -160,9 +160,6 @@ def updatelogger(logger, fn_log, terminal_level=None):
 
 logger = getlogger(logger_name='NRSA')
 
-logger.debug(f'NRSA step1 version = {VERSION_step1}, utils version = {VERSION_utils}')
-
-
 def bench(s, lb):
     time_cost.setdefault(lb, 0)
     now = time.time()
@@ -446,12 +443,9 @@ def main(args):
     fno_ppchange = f'{pwout}/known_gene/pp_change.txt'
     fno_gbchange = f'{pwout}/known_gene/gb_change.txt'
     fn_gbc_sum = f'{pwout}/intermediate/gbc_sum.json'
-    if not (os.path.exists(fno_ppchange) and os.path.exists(fno_gbchange) and os.path.exists(fn_gbc_sum) and demo):
-        logger.info('Change_pp_gb')
-        change_pp_gb(n_gene_cols, fn_count_pp_gb, analysis.pwout, rep1, rep2, window_size, factor1=factor1, factor2=factor2, factor_flag=factor_flag, islongerna=analysis.longerna)
-    else:
-        logger.debug(f'skip change_pp_gb due to demo mode')
-    
+    logger.info('Change_pp_gb')
+    change_pp_gb(n_gene_cols, fn_count_pp_gb, analysis.pwout, rep1, rep2, window_size, factor1=factor1, factor2=factor2, factor_flag=factor_flag, islongerna=analysis.longerna)
+
     logger.debug('Dump pindex.txt')
     header_extra = []
     for fn_lb, fn_bed in fls:
@@ -486,10 +480,7 @@ def main(args):
         logger.info(f'plotting heatmap for pp_change')
         # "perl heatmap.pl -w $pwout -i $list -in1 $cond1_str -in2 $cond2_str -m $genome -n $tname";
         fno = f'{pwout}/known_gene/heatmap.pdf'
-        if not (os.path.exists(fno) and demo):
-            draw_heatmap_pp_change(n_gene_cols, analysis.pwout, pw_bed,  fls_ctrl=analysis.control_bed, fls_case=analysis.case_bed, fn_tss=fn_tss, region_size=5000, bin_size=200, outname='heatmap', skipe_bedtools_coverage=demo)
-        else:
-            logger.debug(f'skip plot heatmap due to demo mode')
+        draw_heatmap_pp_change(n_gene_cols, analysis.pwout, pw_bed,  fls_ctrl=analysis.control_bed, fls_case=analysis.case_bed, fn_tss=fn_tss, region_size=5000, bin_size=200, outname='heatmap', skipe_bedtools_coverage=demo)
         
         filter_pindex(pwout)
 
@@ -528,6 +519,7 @@ if __name__ == "__main__":
     if in_docker:
         logger.warning(f'Running inside of docker image, be sure to mount the input and output disk using -v, otherwise, the files won\'t be recognized')
 
+    logger.debug(f'NRSA step1 version = {VERSION_step1}, utils version = {VERSION_utils}')
     logger.debug(f'working in {os.getcwd()}')
     logger.debug(f'inpu args = {vars(args)}')
     

@@ -170,7 +170,6 @@ from utils import process_input, check_dependency, get_ref, process_gtf, gtf_com
 from utils import VERSION as VERSION_utils
 VERSION_step2 = '2025-10-09'
 
-logger.debug(f'NRSA step2 version: {VERSION_step2}, utils version: {VERSION_utils}')
 
 def main(args):
     args_d = vars(args)
@@ -667,6 +666,8 @@ if __name__ == "__main__":
 
     pwout_raw = os.path.realpath(args.pwout)
     logger.debug(f'pw_out_raw = {pwout_raw}')
+    logger.debug(f'NRSA step2 version: {VERSION_step2}, utils version: {VERSION_utils}')
+
     args.pwout = pwout_raw
     args.pwout_raw = pwout_raw
 
