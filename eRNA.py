@@ -343,7 +343,7 @@ def main(args):
     active_genes = set()
     with open(fn_active_genes) as f:
         for i in f:
-            ts, gn = i[:-1].split('\t')
+            ts, gn = i[:-1].split('\t')[:2]
             active_genes.add(ts)
             ts_to_gn[ts] = gn
 
