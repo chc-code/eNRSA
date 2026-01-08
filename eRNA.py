@@ -53,6 +53,7 @@ def getargs():
     ps.add_argument('-demo', help="""skip HOMER makeTagDirectory if already done""", action='store_true')
     ps.add_argument('-verbose', '-v', help="""verbose mode, show debug level logging info""", action='store_true')
     ps.add_argument('-sorted', help="""the input bed files are sorted, skip the sorting step""", action='store_true')
+    ps.add_argument('-findpeaks_options', '-findpeaks', help="""extra options for findpeaks, nargs=*, sep by space""", nargs='*')
     args = ps.parse_args()
     return args
 
@@ -253,7 +254,16 @@ def main(args):
 
         # find peaks
         logger.info(f'Find Peaks...')
-        cmd_findpeaks = f'findPeaks {pw_homer} -style groseq -o {fn_peak_txt} -gtf {fn_peak_gtf}'
+        if args.findpeaks_options:
+            logger.warning(f'Using extra findPeaks options: {" ".join(args.findpeaks_options)}')
+            extra_options = ' '.join(args.findpeaks_options)
+        else:
+            extra_options = ''
+        
+        
+        cmd_findpeaks = f'findPeaks {pw_homer} -style groseq -o {fn_peak_txt} -gtf {fn_peak_gtf} {extra_options}'
+        if extra_options:
+            logger.info(f'findPeaks command: \n{cmd_findpeaks}')
         status, stdout, stderr = run_shell(cmd_findpeaks, ret_info=True)
         stdout = stdout.decode() if stdout else ''
         stderr = stderr.decode() if stderr else ''
