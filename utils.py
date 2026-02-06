@@ -3365,7 +3365,7 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
             ts_chr = v['chr']
             if ts_chr not in valid_chr:
                 ts_excluded += 1
-                gtf_info_new[ts_chr].pop(ts)
+                # gtf_info_new[ts_chr].pop(ts)
                 if ts in pp_str:
                     del pp_str[ts]
                 if ts in gb_str:
@@ -3378,6 +3378,9 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
             logger.info(f'{ts_excluded} transcripts in GTF file excluded due to chromosome not exist in bed file')
             logger.debug(f'excluded chr = {chr_excluded}')
         logger.debug(f'init ts list = {n_ts_init}, current = {n_ts_init - ts_excluded}, drop = {ts_excluded}')
+        logger.debug(f'pre_count_flist chr list = {sorted(pre_count_flist)}')
+        logger.debug(f'gtf_info_new chr list = {sorted(gtf_info_new)}')
+        
 
         n_current = n_ts_init - ts_excluded
         if n_current == 0:
@@ -3390,6 +3393,7 @@ def process_bed_files(analysis, fls, gtf_info, gtf_info_raw, fa_idx, fh_fa, reus
                 err = 1
 
         for chr_, ts_list_chr in gtf_info_new.items():
+            if chr_ not in pre_count_flist:continue
             fn_count_per_base, fn_count_bin = pre_count_flist[chr_]
             with open(fn_count_per_base, 'rb') as f:
                 count_per_base = pickle.load(f)
