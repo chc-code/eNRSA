@@ -1828,6 +1828,40 @@ def add_FDR_col(df, col_pvalue, col_FDR='FDR'):
     df.insert(idx_pvalue + 1, col_FDR, fdr)
     return df
 
+def add_FDR_col_file(fn, col_pvalue, col_FDR='FDR', sep='\t', return_df=False, fno=None):
+    df = pd.read_csv(fn, sep=sep)
+    df = df.reset_index(drop=True)
+    pd.set_option('future.no_silent_downcasting', True)
+    pvals = df[col_pvalue].replace('NA', np.nan).astype(float).dropna()
+    fdr = multipletests(pvals, method='fdr_bh')[1]
+
+
+    df.loc[pvals.index, col_FDR] = fdr
+    fdr = df.pop(col_FDR) # in order to change the position of col_FDR
+    idx_pvalue = df.columns.get_loc(col_pvalue)
+    df.insert(idx_pvalue + 1, col_FDR, fdr)
+    
+    # save to file
+    # first backup the original file
+    if fno is None:
+        fn_bk = f'{fn}.bk'
+        try:
+            os.rename(fn, fn_bk)
+        except:
+            logger.warning(f'fail to backup original file {fn}, maybe due to write permission issue')
+            fno = os.path.basename(fn)
+        else:
+            fno = fn
+        
+        fno = fno.replace('.add_FDR', '').replace('.txt', '.add_FDR.txt')
+    df.to_csv(fno, sep=sep, index=False, na_rep='NA')
+    
+    if return_df:
+        return df
+
+
+
+
 
 def change_pindex(fno_prefix, n_gene_cols, fn, fno, rep1, rep2, window_size, factor1=None, factor2=None, factor_flag=0):
     """
@@ -1965,6 +1999,10 @@ def filter_pindex(pwout):
                     n_ts_remain += 1
                 else:
                     ts_missing.append(ts)
+        
+        # after filtering, need to re-calculate the FDR
+        add_FDR_col_file(fn, col_pvalue='pvalue', col_FDR='FDR', sep='\t', return_df=False, fno=fn)
+
         if ts_missing:
             logger.warning(f'{len(ts_missing)} transcripts are missing in pindex files, e.g. {ts_missing[:10]} ...')
         logger.debug(f'after filtering, {n_ts_remain} transcripts remain in pindex files, n_transcripts in gb_change = {len(valid_ts)}')
