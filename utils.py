@@ -1853,8 +1853,11 @@ def add_FDR_col_file(fn, col_pvalue, col_FDR='FDR', sep='\t', return_df=False, f
         else:
             fno = fn
         
-        fno = fno.replace('.add_FDR', '').replace('.txt', '.add_FDR.txt')
-    df.to_csv(fno, sep=sep, index=False, na_rep='NA')
+        # fno = fno.replace('.add_FDR', '').replace('.txt', '.add_FDR.txt')
+    try:
+        df.to_csv(fno, sep=sep, index=False, na_rep='NA')
+    except:
+        logger.warning(f'Fail to save file with FDR column to {fno}, maybe due to write permission issue')
     
     if return_df:
         return df
